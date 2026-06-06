@@ -110,6 +110,18 @@
                   <span>Upload product photos</span>
                   <small>PNG or JPG. Multiple angles improve preview polish.</small>
                 </label>
+                <div class="phone-upload-card">
+                  <div>
+                    <span class="phone-upload-title">Upload from phone</span>
+                    <small id="phoneUploadUrl">Preparing local upload link...</small>
+                    <div class="phone-upload-tools">
+                      <input id="phoneUploadHost" placeholder="Laptop IP, e.g. 192.168.1.8">
+                      <button id="phoneUploadRefresh" type="button">Update QR</button>
+                    </div>
+                    <small class="phone-upload-note">Phone must be on the same Wi-Fi. Open the shown http:// URL manually if scanning stalls.</small>
+                  </div>
+                  <img id="phoneUploadQr" alt="QR code for phone upload">
+                </div>
                 <div id="uploadStrip" class="upload-strip"></div>
 
                 <div class="form-grid">
@@ -153,8 +165,16 @@
                     <input id="weight" placeholder="Required, e.g. 0.5 kg">
                   </label>
                   <label class="field">
-                    <span>Dimensions</span>
-                    <input id="dimensions" placeholder="Required, e.g. 20 x 10 x 5 cm">
+                    <span>Length</span>
+                    <input id="length" type="number" min="0" step="0.01" placeholder="Required">
+                  </label>
+                  <label class="field">
+                    <span>Width</span>
+                    <input id="width" type="number" min="0" step="0.01" placeholder="Required">
+                  </label>
+                  <label class="field">
+                    <span>Height</span>
+                    <input id="height" type="number" min="0" step="0.01" placeholder="Required">
                   </label>
                   <label class="field">
                     <span>Target geo</span>
@@ -249,7 +269,10 @@
                   <p class="eyebrow">Listing draft</p>
                   <h3>Template fields</h3>
                 </div>
-                <span id="readinessPill" class="status-pill warn">Needs draft</span>
+                <div class="status-stack">
+                  <span id="listingGenerationSource" class="status-pill warn">Text fallback</span>
+                  <span id="readinessPill" class="status-pill warn">Needs draft</span>
+                </div>
               </div>
               <div class="listing-grid">
                 <label class="field">
@@ -386,7 +409,6 @@
             <section class="panel-card metadata-card">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Step 4</p>
                   <h2>Metadata JSON</h2>
                 </div>
                 <div class="section-actions">

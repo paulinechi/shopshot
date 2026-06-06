@@ -1,50 +1,65 @@
 [
-  {
-    "category_id": 100000,
-    "parent_category_id": 0,
-    "original_category_name": "Electronics & Gadgets",
-    "has_children": true
-  },
-  {
-    "category_id": 100001,
-    "parent_category_id": 100000,
-    "original_category_name": "Mobile Accessories",
-    "has_children": false
-  },
-  {
-    "category_id": 100002,
-    "parent_category_id": 100000,
-    "original_category_name": "Computer Accessories",
-    "has_children": false
-  },
-  {
-    "category_id": 100003,
-    "parent_category_id": 100000,
-    "original_category_name": "Audio & Wearables",
-    "has_children": false
-  },
-  {
-    "category_id": 200000,
-    "parent_category_id": 0,
-    "original_category_name": "Health & Beauty",
-    "has_children": true
-  },
-  {
-    "category_id": 200001,
-    "parent_category_id": 200000,
-    "original_category_name": "Skincare",
-    "has_children": false
-  },
-  {
-    "category_id": 200002,
-    "parent_category_id": 200000,
-    "original_category_name": "Makeup",
-    "has_children": false
-  },
-  {
-    "category_id": 200003,
-    "parent_category_id": 200000,
-    "original_category_name": "Personal Care",
-    "has_children": false
-  }
+  { "category_id": 100000, "parent_category_id": 0, "original_category_name": "Electronics & Gadgets", "has_children": true },
+  { "category_id": 100001, "parent_category_id": 100000, "original_category_name": "Mobile Accessories", "has_children": false },
+  { "category_id": 100002, "parent_category_id": 100000, "original_category_name": "Computer Accessories", "has_children": false },
+  { "category_id": 100003, "parent_category_id": 100000, "original_category_name": "Audio & Wearables", "has_children": false },
+  { "category_id": 100004, "parent_category_id": 100000, "original_category_name": "Cameras & Drones", "has_children": false },
+  { "category_id": 100005, "parent_category_id": 100000, "original_category_name": "Gaming Accessories", "has_children": false },
+  { "category_id": 100006, "parent_category_id": 100000, "original_category_name": "Smart Home Devices", "has_children": false },
+  { "category_id": 100007, "parent_category_id": 100000, "original_category_name": "Power Banks & Chargers", "has_children": false },
+
+  { "category_id": 200000, "parent_category_id": 0, "original_category_name": "Health & Beauty", "has_children": true },
+  { "category_id": 200001, "parent_category_id": 200000, "original_category_name": "Skincare", "has_children": false },
+  { "category_id": 200002, "parent_category_id": 200000, "original_category_name": "Makeup", "has_children": false },
+  { "category_id": 200003, "parent_category_id": 200000, "original_category_name": "Personal Care", "has_children": false },
+  { "category_id": 200004, "parent_category_id": 200000, "original_category_name": "Hair Care", "has_children": false },
+  { "category_id": 200005, "parent_category_id": 200000, "original_category_name": "Fragrances", "has_children": false },
+  { "category_id": 200006, "parent_category_id": 200000, "original_category_name": "Beauty Tools", "has_children": false },
+  { "category_id": 200007, "parent_category_id": 200000, "original_category_name": "Health Supplements", "has_children": false },
+
+  { "category_id": 300000, "parent_category_id": 0, "original_category_name": "Home & Living", "has_children": true },
+  { "category_id": 300001, "parent_category_id": 300000, "original_category_name": "Kitchen & Dining", "has_children": false },
+  { "category_id": 300002, "parent_category_id": 300000, "original_category_name": "Home Decor", "has_children": false },
+  { "category_id": 300003, "parent_category_id": 300000, "original_category_name": "Bedding & Bath", "has_children": false },
+  { "category_id": 300004, "parent_category_id": 300000, "original_category_name": "Storage & Organisation", "has_children": false },
+  { "category_id": 300005, "parent_category_id": 300000, "original_category_name": "Cleaning Supplies", "has_children": false },
+  { "category_id": 300006, "parent_category_id": 300000, "original_category_name": "Lighting", "has_children": false },
+
+  { "category_id": 400000, "parent_category_id": 0, "original_category_name": "Fashion Accessories", "has_children": true },
+  { "category_id": 400001, "parent_category_id": 400000, "original_category_name": "Bags & Wallets", "has_children": false },
+  { "category_id": 400002, "parent_category_id": 400000, "original_category_name": "Watches", "has_children": false },
+  { "category_id": 400003, "parent_category_id": 400000, "original_category_name": "Jewellery", "has_children": false },
+  { "category_id": 400004, "parent_category_id": 400000, "original_category_name": "Eyewear", "has_children": false },
+  { "category_id": 400005, "parent_category_id": 400000, "original_category_name": "Hats & Scarves", "has_children": false },
+
+  { "category_id": 500000, "parent_category_id": 0, "original_category_name": "Women Clothes", "has_children": true },
+  { "category_id": 500001, "parent_category_id": 500000, "original_category_name": "Tops", "has_children": false },
+  { "category_id": 500002, "parent_category_id": 500000, "original_category_name": "Dresses", "has_children": false },
+  { "category_id": 500003, "parent_category_id": 500000, "original_category_name": "Pants & Skirts", "has_children": false },
+  { "category_id": 500004, "parent_category_id": 500000, "original_category_name": "Activewear", "has_children": false },
+
+  { "category_id": 600000, "parent_category_id": 0, "original_category_name": "Men Clothes", "has_children": true },
+  { "category_id": 600001, "parent_category_id": 600000, "original_category_name": "Shirts", "has_children": false },
+  { "category_id": 600002, "parent_category_id": 600000, "original_category_name": "Pants", "has_children": false },
+  { "category_id": 600003, "parent_category_id": 600000, "original_category_name": "Outerwear", "has_children": false },
+
+  { "category_id": 700000, "parent_category_id": 0, "original_category_name": "Mother & Baby", "has_children": true },
+  { "category_id": 700001, "parent_category_id": 700000, "original_category_name": "Baby Skincare", "has_children": false },
+  { "category_id": 700002, "parent_category_id": 700000, "original_category_name": "Feeding Essentials", "has_children": false },
+  { "category_id": 700003, "parent_category_id": 700000, "original_category_name": "Toys & Learning", "has_children": false },
+
+  { "category_id": 800000, "parent_category_id": 0, "original_category_name": "Sports & Outdoors", "has_children": true },
+  { "category_id": 800001, "parent_category_id": 800000, "original_category_name": "Fitness Equipment", "has_children": false },
+  { "category_id": 800002, "parent_category_id": 800000, "original_category_name": "Outdoor Recreation", "has_children": false },
+  { "category_id": 800003, "parent_category_id": 800000, "original_category_name": "Sports Apparel", "has_children": false },
+
+  { "category_id": 900000, "parent_category_id": 0, "original_category_name": "Food & Beverages", "has_children": true },
+  { "category_id": 900001, "parent_category_id": 900000, "original_category_name": "Snacks", "has_children": false },
+  { "category_id": 900002, "parent_category_id": 900000, "original_category_name": "Beverages", "has_children": false },
+  { "category_id": 900003, "parent_category_id": 900000, "original_category_name": "Pantry Staples", "has_children": false },
+
+  { "category_id": 1000000, "parent_category_id": 0, "original_category_name": "Pet Supplies", "has_children": true },
+  { "category_id": 1000001, "parent_category_id": 1000000, "original_category_name": "Pet Food", "has_children": false },
+  { "category_id": 1000002, "parent_category_id": 1000000, "original_category_name": "Pet Grooming", "has_children": false },
+  { "category_id": 1000003, "parent_category_id": 1000000, "original_category_name": "Pet Toys", "has_children": false }
 ]

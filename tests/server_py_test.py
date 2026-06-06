@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -75,6 +76,7 @@ class PythonBackendTest(unittest.TestCase):
         self.assertIn("preserve the exact uploaded product", body["prompt"])
         self.assertIn("Do not redesign", body["prompt"])
         self.assertIn("marketplace", body["prompt"])
+        self.assertIn("remove or replace the original background", body["prompt"])
 
     def test_multipart_body_uses_image_array_fields_for_multiple_references(self):
         body = server.build_multipart_body(
@@ -162,6 +164,25 @@ class PythonBackendTest(unittest.TestCase):
         self.assertIn("stock", missing)
         self.assertEqual(draft["readiness"]["status"], "Needs Review")
 
+    def test_generate_listing_draft_treats_stale_missing_category_weight_as_blank(self):
+        draft = server.generate_listing_draft({
+            "productName": "USB-C Cable",
+            "categoryHint": "electronics",
+            "price": "9.90",
+            "stock": "20",
+            "weight": "Missing Shopee category",
+            "length": "18",
+            "width": "7",
+            "height": "2",
+            "targetGeo": "SG",
+            "imagesCount": 1,
+        })
+
+        missing = {item["field"] for item in draft["missing_fields"] if item["importance"] == "required"}
+
+        self.assertEqual(draft["listing_draft"]["weight"]["value"], "")
+        self.assertIn("weight", missing)
+
     def test_generate_listing_draft_uses_xlsx_template_requirements_for_readiness(self):
         draft = server.generate_listing_draft({
             "productName": "USB-C Cable",
@@ -177,6 +198,146 @@ class PythonBackendTest(unittest.TestCase):
         required_missing = {item["field"] for item in draft["missing_fields"] if item["importance"] == "required"}
         self.assertNotIn("category", required_missing)
         self.assertEqual(draft["readiness"]["status"], "Ready to Export")
+
+    def test_generate_listing_draft_accepts_split_dimensions(self):
+        draft = server.generate_listing_draft({
+            "productName": "USB-C Cable",
+            "categoryHint": "electronics",
+            "price": "9.90",
+            "stock": "20",
+            "weight": "0.2",
+            "length": "18",
+            "width": "7",
+            "height": "2",
+            "targetGeo": "SG",
+            "imagesCount": 1,
+        })
+
+        dimensions = draft["listing_draft"]["dimensions"]["value"]
+        required_missing = {item["field"] for item in draft["missing_fields"] if item["importance"] == "required"}
+
+        self.assertEqual(dimensions["length"], "18")
+        self.assertEqual(dimensions["width"], "7")
+        self.assertEqual(dimensions["height"], "2")
+        self.assertNotIn("length", required_missing)
+        self.assertEqual(draft["readiness"]["status"], "Ready to Export")
+
+    def test_generate_listing_draft_copy_uses_seller_inputs(self):
+        draft = server.generate_listing_draft({
+            "productName": "Glow Ritual Set",
+            "productNote": "sensitive skin, travel-friendly glass bottles",
+            "categoryHint": "Beauty/Skincare/Face Serums",
+            "brand": "Glow Co",
+            "brandTone": "premium, warm, trustworthy",
+            "audience": "urban millennial shoppers",
+            "price": "24.90",
+            "stock": "12",
+            "weight": "0.5",
+            "length": "20",
+            "width": "10",
+            "height": "5",
+            "targetGeo": "SG",
+            "imagesCount": 1,
+        })
+
+        listing = draft["listing_draft"]
+        description = listing["description"]["value"]
+        highlights = "\n".join(item["value"] for item in listing["highlights"])
+
+        self.assertIn("Glow Co", description)
+        self.assertIn("urban millennial shoppers", description)
+        self.assertIn("premium, warm, trustworthy", description)
+        self.assertIn("sensitive skin", description)
+        self.assertIn("Singapore", description)
+        self.assertIn("travel-friendly glass bottles", highlights)
+        self.assertNotIn("Please confirm price", description)
+
+    def test_create_openai_listing_draft_request_uses_text_model_and_seller_context(self):
+        input_data = {
+            "productName": "Glow Ritual Set",
+            "productNote": "sensitive skin, travel-friendly glass bottles",
+            "categoryHint": "Beauty/Skincare/Face Serums",
+            "brand": "Glow Co",
+            "brandTone": "premium, warm, trustworthy",
+            "audience": "urban millennial shoppers",
+            "price": "24.90",
+            "stock": "12",
+            "weight": "0.5",
+            "length": "20",
+            "width": "10",
+            "height": "5",
+            "targetGeo": "SG",
+        }
+        draft = server.generate_listing_draft(input_data)
+        body = server.create_openai_listing_draft_request(
+            input_data, draft, "gpt-5.4-mini"
+        )
+
+        serialized = json.dumps(body)
+
+        self.assertEqual(body["model"], "gpt-5.4-mini")
+        self.assertEqual(body["text"]["format"]["type"], "json_schema")
+        self.assertEqual(body["text"]["format"]["name"], "listing_copy")
+        self.assertIn("Glow Co", serialized)
+        self.assertIn("premium, warm, trustworthy", serialized)
+        self.assertIn("urban millennial shoppers", serialized)
+        self.assertIn("20", serialized)
+        self.assertIn("width", serialized)
+        self.assertIn("height", serialized)
+
+    def test_apply_openai_listing_copy_preserves_seller_owned_fields(self):
+        draft = server.generate_listing_draft({
+            "productName": "Glow Ritual Set",
+            "productNote": "sensitive skin, travel-friendly glass bottles",
+            "categoryHint": "Beauty/Skincare/Face Serums",
+            "brand": "Glow Co",
+            "price": "24.90",
+            "stock": "12",
+            "weight": "0.5",
+            "length": "20",
+            "width": "10",
+            "height": "5",
+            "targetGeo": "SG",
+        })
+        original = draft["listing_draft"]
+        ai_copy = {
+            "title": "Glow Ritual Set for Sensitive Skin Travel Routines",
+            "description": "A polished, specific description written by the text model.",
+            "highlights": [
+                "Travel-friendly glass bottles sized for daily routines",
+                "Gentle positioning for sensitive-skin gifting",
+            ],
+            "keywords": ["glow ritual set", "sensitive skin travel skincare"],
+            "hashtags": ["#GlowRitualSet", "#SensitiveSkinRoutine"],
+            "alt_text": "Glow Ritual Set arranged as a premium product preview.",
+        }
+
+        updated = server.apply_openai_listing_copy(draft, ai_copy, "gpt-5.4-mini")
+        listing = updated["listing_draft"]
+
+        self.assertEqual(listing["title"]["value"], ai_copy["title"])
+        self.assertEqual(listing["description"]["value"], ai_copy["description"])
+        self.assertEqual(listing["highlights"][0]["source"], "openai")
+        self.assertEqual(listing["keywords"], ai_copy["keywords"])
+        self.assertEqual(listing["price"], original["price"])
+        self.assertEqual(listing["stock"], original["stock"])
+        self.assertEqual(listing["weight"], original["weight"])
+        self.assertEqual(listing["dimensions"], original["dimensions"])
+        self.assertEqual(updated["text_generation"]["model"], "gpt-5.4-mini")
+
+    def test_extract_openai_response_text_reads_common_response_shapes(self):
+        self.assertEqual(
+            server.extract_openai_response_text({"output_text": "{\"title\":\"A\"}"}),
+            "{\"title\":\"A\"}",
+        )
+        self.assertEqual(
+            server.extract_openai_response_text({
+                "output": [{
+                    "content": [{"type": "output_text", "text": "{\"title\":\"B\"}"}]
+                }]
+            }),
+            "{\"title\":\"B\"}",
+        )
 
     def test_generate_listing_draft_flags_xlsx_logistics_columns(self):
         draft = server.generate_listing_draft({
@@ -200,12 +361,37 @@ class PythonBackendTest(unittest.TestCase):
         self.assertIn("category_id", suggestion["value"])
         self.assertIn("Electronics", suggestion["value"]["category_path"])
 
-    def test_extract_shopee_template_categories_reads_upload_sample(self):
+    def test_extract_shopee_template_categories_reads_pre_order_dts_range(self):
         categories = server.extract_shopee_template_categories()
-        category_ids = {category["category_id"] for category in categories}
+        by_id = {category["category_id"]: category for category in categories}
 
-        self.assertIn(120039, category_ids)
-        self.assertTrue(any("Template category 120039" in category["display_path"] for category in categories))
+        self.assertGreaterEqual(len(categories), 1900)
+        self.assertEqual(
+            by_id[100991]["display_path"],
+            "Mom & Baby > Milk Formula & Baby Food > Milk Formula",
+        )
+        self.assertEqual(by_id[100991]["pre_order_dts_range"], "7 - 30")
+
+    def test_public_categories_include_broader_marketplace_roots(self):
+        categories = server.public_categories()
+        roots = {category["display_path"].split(" > ")[0] for category in categories}
+        leaf_count = len([category for category in categories if not category["has_children"]])
+
+        self.assertGreaterEqual(leaf_count, 1900)
+        self.assertIn("Electronics & Gadgets", roots)
+        self.assertIn("Beauty", roots)
+        self.assertIn("Home & Living", roots)
+        self.assertIn("Fashion Accessories", roots)
+
+    def test_mobile_upload_url_uses_host_and_session(self):
+        url = server.build_mobile_upload_url("192.168.1.8:3000", "abc 123")
+
+        self.assertEqual(url, "http://192.168.1.8:3000/mobile-upload?session=abc+123")
+
+    def test_mobile_upload_url_adds_port_for_manual_host_override(self):
+        url = server.build_mobile_upload_url("192.168.1.8", "abc123", fallback_host="localhost:3000")
+
+        self.assertEqual(url, "http://192.168.1.8:3000/mobile-upload?session=abc123")
 
     def test_extract_shopee_template_fields_reads_basic_template(self):
         fields = server.extract_shopee_template_fields()

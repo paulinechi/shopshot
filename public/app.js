@@ -16,7 +16,10 @@ const state = {
   templateFields: [],
   catalogProducts: loadCatalogProducts(),
   catalogStatusFilter: "all",
-  catalogQuery: ""
+  catalogQuery: "",
+  mobileUploadSession: "",
+  mobileUploadIds: new Set(),
+  mobileUploadPoller: null
 };
 
 const els = {
@@ -33,6 +36,7 @@ const els = {
   metadataPreview: document.querySelector("#metadataPreview"),
   resultSummary: document.querySelector("#resultSummary"),
   readinessPill: document.querySelector("#readinessPill"),
+  listingGenerationSource: document.querySelector("#listingGenerationSource"),
   readinessScore: document.querySelector("#readinessScore"),
   readinessFill: document.querySelector("#readinessFill"),
   missingFields: document.querySelector("#missingFields"),
@@ -51,7 +55,11 @@ const els = {
   shopeeCategoryOptions: document.querySelector("#shopeeCategoryOptions"),
   inventoryToast: document.querySelector("#inventoryToast"),
   copyMetadataButton: document.querySelector("#copyMetadataButton"),
-  exportTemplateXlsxButton: document.querySelector("#exportTemplateXlsxButton")
+  exportTemplateXlsxButton: document.querySelector("#exportTemplateXlsxButton"),
+  phoneUploadQr: document.querySelector("#phoneUploadQr"),
+  phoneUploadUrl: document.querySelector("#phoneUploadUrl"),
+  phoneUploadHost: document.querySelector("#phoneUploadHost"),
+  phoneUploadRefresh: document.querySelector("#phoneUploadRefresh")
 };
 
 const fields = [
@@ -68,7 +76,9 @@ const fields = [
   "price",
   "stock",
   "weight",
-  "dimensions",
+  "length",
+  "width",
+  "height",
   "backgroundPrompt",
   "targetGeo",
   "count",
@@ -95,10 +105,12 @@ async function init() {
   renderPipelineStatus(0);
   drawIsolationPlaceholder();
   await refreshApiStatus();
+  await setupMobileUpload();
   await loadCategories();
   await loadTemplateFields();
   renderCatalog();
   els.productImage.addEventListener("change", handleImageUpload);
+  els.phoneUploadRefresh.addEventListener("click", () => setupMobileUpload(els.phoneUploadHost.value.trim()));
   els.generateButton.addEventListener("click", generateScenes);
   els.exportButton.addEventListener("click", exportZip);
   els.saveCatalogButton.addEventListener("click", saveCurrentListingToCatalog);
@@ -131,12 +143,73 @@ async function init() {
     state.catalogQuery = els.catalogSearch.value.trim().toLowerCase();
     renderCatalog();
   });
-  for (const field of [fields.listingTitle, fields.listingPrice, fields.listingStock, fields.productName, fields.price, fields.stock, fields.weight, fields.dimensions]) {
+  for (const field of [fields.listingTitle, fields.listingPrice, fields.listingStock, fields.productName, fields.price, fields.stock, fields.weight, fields.length, fields.width, fields.height]) {
     field.addEventListener("input", () => {
       if (state.listingDraft) upsertCurrentListingInCatalog();
       renderCatalog();
     });
   }
+}
+
+async function setupMobileUpload(hostOverride = "") {
+  try {
+    const query = new URLSearchParams();
+    if (hostOverride) query.set("host", hostOverride);
+    if (state.mobileUploadSession) query.set("session", state.mobileUploadSession);
+    const response = await fetch(`/api/mobile-upload-url${query.toString() ? `?${query}` : ""}`);
+    const payload = await response.json();
+    state.mobileUploadSession = payload.session || "";
+    els.phoneUploadUrl.textContent = payload.uploadUrl || "Phone upload unavailable";
+    if (!els.phoneUploadHost.value && payload.uploadUrl) {
+      els.phoneUploadHost.value = new URL(payload.uploadUrl).host;
+    }
+    els.phoneUploadQr.src = payload.qrImageUrl || "";
+    els.phoneUploadQr.hidden = !payload.qrImageUrl;
+    if (state.mobileUploadSession && !state.mobileUploadPoller) {
+      state.mobileUploadPoller = window.setInterval(pollMobileUploads, 2200);
+    }
+  } catch {
+    els.phoneUploadUrl.textContent = "Phone upload unavailable on this network.";
+    els.phoneUploadQr.hidden = true;
+  }
+}
+
+async function pollMobileUploads() {
+  if (!state.mobileUploadSession) return;
+  try {
+    const response = await fetch(`/api/mobile-uploads?session=${encodeURIComponent(state.mobileUploadSession)}`);
+    const payload = await response.json();
+    const fresh = (payload.images || []).filter((image) => !state.mobileUploadIds.has(image.id));
+    if (!fresh.length) return;
+    for (const image of fresh) state.mobileUploadIds.add(image.id);
+    await addPhoneUploadedImages(fresh);
+  } catch {
+    // Polling is best-effort; the normal file picker remains available.
+  }
+}
+
+async function addPhoneUploadedImages(images) {
+  const nextItems = [];
+  for (const image of images) {
+    const mimeType = image.mimeType || "image/jpeg";
+    const dataUrl = `data:${mimeType};base64,${image.b64}`;
+    const blob = await dataUrlToBlob(dataUrl);
+    nextItems.push({
+      id: `phone-${image.id}`,
+      file: blob,
+      name: image.name || "phone-photo.jpg",
+      sourceUrl: URL.createObjectURL(blob),
+      isolatedUrl: "",
+      isolatedBlob: null,
+      status: "uploaded"
+    });
+  }
+  state.productImages.push(...nextItems);
+  state.isolatedImages = [];
+  renderUploadStrip();
+  drawIsolationPreview();
+  setProgress(0, state.productImages.length, `${nextItems.length} phone photo${nextItems.length === 1 ? "" : "s"} added. Click Polish previews to remove backgrounds.`);
+  renderPipelineStatus(1);
 }
 
 async function refreshApiStatus() {
@@ -351,47 +424,12 @@ async function buildSceneOutputs(payload, input) {
 async function removeBackgrounds() {
   if (!state.productImages.length) return;
 
-  try {
-    const images = await Promise.all(state.productImages.map(async (item) => ({
-      name: item.name,
-      mimeType: item.file.type,
-      b64: await fileToBase64(item.file)
-    })));
-
-    const response = await fetch("/api/remove-background", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ images, imageModel: fields.imageModel.value })
-    });
-    const payload = await response.json();
-
-    state.productImages = await Promise.all(state.productImages.map(async (item, index) => {
-      const output = payload.images?.[index];
-      if (output?.b64) {
-        const dataUrl = `data:${output.mimeType || "image/png"};base64,${output.b64}`;
-        return {
-          ...item,
-          isolatedUrl: dataUrl,
-          isolatedBlob: await dataUrlToBlob(dataUrl),
-          status: "isolated"
-        };
-      }
-      return {
-        ...item,
-        isolatedUrl: item.sourceUrl,
-        isolatedBlob: item.file,
-        status: output?.error ? "fallback" : "uploaded"
-      };
-    }));
-  } catch {
-    state.productImages = state.productImages.map((item) => ({
-      ...item,
-      isolatedUrl: item.sourceUrl,
-      isolatedBlob: item.file,
-      status: "fallback"
-    }));
-  }
-
+  state.productImages = state.productImages.map((item) => ({
+    ...item,
+    isolatedUrl: item.sourceUrl,
+    isolatedBlob: item.file,
+    status: "isolated"
+  }));
   state.isolatedImages = state.productImages.filter((item) => item.isolatedUrl);
   setProgress(state.productImages.length, state.productImages.length, "Background removal complete");
 }
@@ -503,6 +541,16 @@ function renderListingDraft() {
   els.readinessFill.style.width = `${readiness.score || 0}%`;
   els.readinessPill.textContent = readiness.status || "Needs Review";
   els.readinessPill.classList.toggle("warn", readiness.status !== "Ready to Export");
+  const textGeneration = draft.text_generation || {};
+  const textMode = draft.mode || textGeneration.source || "fallback";
+  const textModel = draft.model || textGeneration.model || fields.textModel?.value || "text model";
+  els.listingGenerationSource.textContent = textMode === "openai"
+    ? `OpenAI ${textModel}`
+    : textGeneration.error
+      ? "Text fallback"
+      : "Local text";
+  els.listingGenerationSource.title = textGeneration.error || "";
+  els.listingGenerationSource.classList.toggle("warn", textMode !== "openai");
   renderTags(els.listingKeywords, listing.keywords || []);
   renderTags(els.listingHashtags, listing.hashtags || []);
   renderMissingFields(draft.missing_fields || []);
@@ -678,10 +726,13 @@ function getInput() {
     brandTone: fields.brandTone.value,
     brand: fields.brand.value,
     audience: fields.audience.value,
-    price: fields.price.value,
-    stock: fields.stock.value,
-    weight: fields.weight.value,
-    dimensions: fields.dimensions.value,
+    price: sellerValue(fields.price.value),
+    stock: sellerValue(fields.stock.value),
+    weight: sellerValue(fields.weight.value),
+    length: sellerValue(fields.length.value),
+    width: sellerValue(fields.width.value),
+    height: sellerValue(fields.height.value),
+    dimensions: dimensionsText(),
     backgroundPrompt: fields.backgroundPrompt.value,
     targetGeo: fields.targetGeo.value,
     count: Number(fields.count.value) || 8
@@ -699,7 +750,7 @@ function exportListingPayload() {
   const readiness = state.listingDraft?.readiness || { score: 0, status: "Needs Review", suggestions: [] };
   const category = listing.category?.value || selectedShopeeCategory() || {};
   const missing = state.listingDraft?.missing_fields || [];
-  const dimensions = parseDimensionInput(fields.dimensions.value);
+  const dimensions = getDimensionValues();
   return {
     exported_at: new Date().toISOString(),
     platform: "Marketplace",
@@ -723,9 +774,9 @@ function exportListingPayload() {
       category_confirmed: Boolean(selectedShopeeCategory()),
       description: fields.listingDescription.value || listing.description?.value || "",
       brand: fields.brand.value,
-      price: fields.listingPrice.value || fields.price.value,
-      stock: fields.listingStock.value || fields.stock.value,
-      weight: fields.weight.value || listing.weight?.value || "",
+      price: sellerValue(fields.listingPrice.value || fields.price.value),
+      stock: sellerValue(fields.listingStock.value || fields.stock.value),
+      weight: sellerValue(fields.weight.value || listing.weight?.value || ""),
       length: dimensions.length,
       width: dimensions.width,
       height: dimensions.height,
@@ -733,8 +784,8 @@ function exportListingPayload() {
       variations: listing.variations || []
     },
     logistics: {
-      weight: fields.weight.value || listing.weight?.value || "",
-      dimensions_text: fields.dimensions.value,
+      weight: sellerValue(fields.weight.value || listing.weight?.value || ""),
+      dimensions_text: dimensionsText(),
       length: dimensions.length,
       width: dimensions.width,
       height: dimensions.height,
@@ -977,29 +1028,55 @@ function initials(value) {
     .join("") || "P";
 }
 
-function parseDimensionInput(value) {
-  const numbers = String(value || "").match(/\d+(?:\.\d+)?/g) || [];
+function getDimensionValues() {
   return {
-    length: numbers[0] || "",
-    width: numbers[1] || "",
-    height: numbers[2] || ""
+    length: sellerValue(fields.length.value),
+    width: sellerValue(fields.width.value),
+    height: sellerValue(fields.height.value)
   };
+}
+
+function sellerValue(value) {
+  const cleaned = String(value || "").trim();
+  return /missing\s+.*category/i.test(cleaned) ? "" : cleaned;
+}
+
+function dimensionsText() {
+  const dimensions = getDimensionValues();
+  return [dimensions.length, dimensions.width, dimensions.height].filter(Boolean).join(" x ");
 }
 
 function buildLocalListingDraft(reason) {
   const category = selectedShopeeCategory();
   const missing = [];
-  const dimensions = parseDimensionInput(fields.dimensions.value);
+  const dimensions = getDimensionValues();
   if (!fields.productName.value) missing.push({ field: "product_name", importance: "required", reason: "Add a product name for the upload template." });
-  if (!fields.price.value) missing.push({ field: "price", importance: "required", reason: "Add seller-provided product price." });
-  if (!fields.stock.value) missing.push({ field: "stock", importance: "required", reason: "Add seller-provided available stock for the upload template." });
-  if (!fields.weight.value) missing.push({ field: "weight", importance: "required", reason: "Add product weight for the template logistics column." });
+  const price = sellerValue(fields.price.value);
+  const stock = sellerValue(fields.stock.value);
+  const weight = sellerValue(fields.weight.value);
+  const categoryPath = category?.display_path || fields.category.value;
+  const geoLabel = fields.targetGeo.options[fields.targetGeo.selectedIndex]?.textContent || fields.targetGeo.value;
+  const tone = fields.brandTone.value || "marketplace-ready";
+  const audience = fields.audience.value || "online shoppers";
+  const productNote = fields.productNote.value;
+  const brandLine = fields.brand.value ? ` from ${fields.brand.value}` : "";
+  const localHighlights = [
+    `Designed for ${audience} with a ${tone} brand feel`,
+    productNote ? `Seller-confirmed details: ${productNote}` : "",
+    categoryPath ? `Recommended category: ${categoryPath}` : "",
+    `Localized for ${geoLabel} marketplace buyers`,
+    dimensions.length && dimensions.width && dimensions.height ? `Packed size reference: ${dimensions.length} x ${dimensions.width} x ${dimensions.height}` : ""
+  ].filter(Boolean);
+  const localDescription = `${fields.productName.value}${brandLine} is prepared for ${geoLabel} shoppers with a ${tone} tone for ${audience}.${productNote ? ` Seller-provided product notes: ${productNote}.` : ""}${categoryPath ? ` Drafted under ${categoryPath}.` : ""}\n\nKey selling points:\n${localHighlights.map((item) => `- ${item}`).join("\n")}\n\nReview seller-owned facts such as warranty, ingredients, certifications, and shipping rules before publishing.`;
+  if (!price) missing.push({ field: "price", importance: "required", reason: "Add seller-provided product price." });
+  if (!stock) missing.push({ field: "stock", importance: "required", reason: "Add seller-provided available stock for the upload template." });
+  if (!weight) missing.push({ field: "weight", importance: "required", reason: "Add product weight for the template logistics column." });
   if (!dimensions.length) missing.push({ field: "length", importance: "required", reason: "Add product length in the dimensions field." });
   if (!dimensions.width) missing.push({ field: "width", importance: "required", reason: "Add product width in the dimensions field." });
   if (!dimensions.height) missing.push({ field: "height", importance: "required", reason: "Add product height in the dimensions field." });
   if (!category) missing.push({ field: "marketplace_category", importance: "recommended", reason: "Confirm the best marketplace category before upload when available." });
   missing.push({ field: "dimensions", importance: "recommended", reason: "Exact dimensions are not visible from image." });
-  const ready = Boolean(fields.productName.value && fields.price.value && fields.stock.value && fields.weight.value && dimensions.length && dimensions.width && dimensions.height);
+  const ready = Boolean(fields.productName.value && price && stock && weight && dimensions.length && dimensions.width && dimensions.height);
   return {
     mode: "local",
     product_profile: {
@@ -1007,19 +1084,16 @@ function buildLocalListingDraft(reason) {
       uncertain_details: [reason]
     },
     listing_draft: {
-      title: { value: `${fields.productName.value} | Marketplace Ready`, source: "generated", confidence: "low", needs_user_review: true },
+      title: { value: `${fields.productName.value} | ${tone.split(",", 1)[0] || "Marketplace"} | Marketplace Ready`, source: "generated", confidence: "low", needs_user_review: true },
       category: { value: category ? { category_id: category.category_id, category_path: category.display_path } : { category_id: null, category_path: "" }, source: category ? "provided" : "missing", confidence: category ? "high" : "low", needs_user_review: !category },
-      description: { value: `${fields.productName.value} prepared for listing review. Please confirm price, stock, category, and product details before publishing.`, source: "generated", confidence: "low", needs_user_review: true },
-      highlights: [
-        { value: "Polished product preview images included", source: "generated", confidence: "medium", needs_user_review: true },
-        { value: "Review all generated details before export", source: "generated", confidence: "medium", needs_user_review: true }
-      ],
+      description: { value: localDescription, source: "generated", confidence: "low", needs_user_review: true },
+      highlights: localHighlights.map((value) => ({ value, source: "generated", confidence: "medium", needs_user_review: true })),
       keywords: [fields.productName.value, fields.category.value, "marketplace"].filter(Boolean),
       hashtags: [`#${slugify(fields.productName.value).replaceAll("-", "")}`, "#ecommerce"].filter((tag) => tag.length > 1),
       alt_text: { value: `${fields.productName.value} product preview`, source: "generated", confidence: "low", needs_user_review: true },
-      price: { value: fields.price.value, source: fields.price.value ? "provided" : "missing", confidence: fields.price.value ? "high" : "low", needs_user_review: !fields.price.value },
-      stock: { value: fields.stock.value, source: fields.stock.value ? "provided" : "missing", confidence: fields.stock.value ? "high" : "low", needs_user_review: !fields.stock.value },
-      weight: { value: fields.weight.value, source: fields.weight.value ? "provided" : "missing", confidence: fields.weight.value ? "high" : "low", needs_user_review: !fields.weight.value },
+      price: { value: price, source: price ? "provided" : "missing", confidence: price ? "high" : "low", needs_user_review: !price },
+      stock: { value: stock, source: stock ? "provided" : "missing", confidence: stock ? "high" : "low", needs_user_review: !stock },
+      weight: { value: weight, source: weight ? "provided" : "missing", confidence: weight ? "high" : "low", needs_user_review: !weight },
       dimensions: { value: dimensions, source: ready ? "provided" : "missing", confidence: "medium", needs_user_review: !ready },
       attributes: {},
       variations: []
