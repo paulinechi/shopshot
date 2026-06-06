@@ -2,11 +2,11 @@
 
 > **For review before implementation:** This plan defines the product-listing feature scope, user workflow, generated metadata, user-entered fields, readiness scoring, and export behavior. No app code should be changed until this document is reviewed and approved.
 
-**Goal:** Extend the current Shopee Product Preview Polisher into a Shopee listing draft builder that turns uploaded product images into editable listing metadata, readiness warnings, and export-ready JSON/CSV while preserving the product image-polishing workflow.
+**Goal:** Extend the current Shopee Product Preview Polisher into a Shopee listing draft builder that turns uploaded product images into editable listing metadata, readiness warnings, and export-ready JSON while preserving the product image-polishing workflow.
 
-**Architecture:** Keep the current no-install vanilla frontend and Python backend. Add a structured listing layer beside the existing preview image workflow: image/product understanding, editable listing draft, readiness score, missing-field checklist, catalog draft state, and export mapping. AI-generated fields must be marked as detected, inferred, provided, or missing so sellers know what needs review.
+**Architecture:** Keep the current no-install vanilla frontend and Python backend. Add a structured listing layer beside the existing preview image workflow on the same page: image/product understanding, editable listing draft, readiness score, missing-field checklist, and JSON export mapping. AI-generated fields must be marked as detected, inferred, provided, or missing so sellers know what needs review.
 
-**Tech Stack:** Python backend, vanilla HTML/CSS/JS frontend, OpenAI image references/image edits for preview polishing, OpenAI vision/text generation for listing metadata, browser-side JSON/CSV export, current Node/Python tests.
+**Tech Stack:** Python backend, vanilla HTML/CSS/JS frontend, OpenAI image references/image edits for preview polishing, OpenAI vision/text generation for listing metadata, browser-side JSON export, current Node/Python tests.
 
 ---
 
@@ -23,7 +23,7 @@ Ignored for planning:
 
 Relevant PRD product idea:
 
-- Product concept after chapter 7 is **Catalog Copilot / ShopShot**, an AI-first Shopee listing builder.
+- Product concept after chapter 7 is **Catalog Copilot / ShopShot**, but this implementation should focus on Shopee listing draft creation and export. Product catalog management is removed because Shopee Seller Platform already supports catalog management.
 - Core flow: upload product images, AI generates Shopee product profile, user reviews detected/missing information, AI creates listing, user exports Shopee-ready content.
 - Important safety rule: AI must not invent unsupported exact specs, regulated claims, fake discounts, fake urgency, or treat inferred information as confirmed fact.
 
@@ -54,18 +54,14 @@ Build this as the next MVP layer over the current app:
    - Draft separates detected, provided, inferred, and missing information.
 
 2. **Seller Review Workspace**
-   - Let users edit listing title, category, description, highlights, attributes, price, stock, SKU, brand, variations, weight, and dimensions.
+   - Let users edit listing title, category, description, highlights, attributes, price, stock, brand, variations, weight, and dimensions.
    - Let users confirm or reject AI suggestions.
    - Show missing fields and readiness score.
 
 3. **Shopee-Ready Export**
    - Export polished preview images plus listing metadata.
-   - Export JSON first, CSV second.
+   - Export JSON only for this phase.
    - Include warnings for fields that still need seller review.
-
-4. **Catalog Drafts**
-   - Add lightweight browser-side catalog state for hackathon demo.
-   - A product can be saved as Draft, Needs Review, Ready to Export, or Exported.
 
 Not in this next slice:
 
@@ -74,6 +70,9 @@ Not in this next slice:
 - Official Shopee attribute/template compliance for every category.
 - Live Shopee category sync unless API credentials/partner approval are available.
 - Account system, persistent database, inventory, orders, pricing automation.
+- Product catalog/dashboard features, because Shopee Seller Platform already covers product catalog management.
+- SKU collection or SKU export in this phase.
+- CSV export.
 - Multi-channel outputs beyond optional social caption/hashtags already present in the reference HTML.
 
 ---
@@ -113,9 +112,8 @@ These should not be treated as confirmed unless the seller provides them:
 | Main product image selection | Yes | Seller should choose hero preview |
 | Product name/title confirmation | Yes | AI draft must be reviewed |
 | Category confirmation | Yes | Shopee category suggestion may be imperfect |
-| Price | Recommended, gate for Ready to Export | AI should not invent price |
-| Stock | Recommended, gate for Ready to Export | AI should not invent inventory |
-| SKU | Recommended | Can be auto-generated but seller should approve |
+| Price | Yes | AI should not invent price; seller must provide it |
+| Stock | Yes | AI should not invent inventory; seller must provide it |
 | Brand | Optional unless provided/visible | Do not invent brand |
 | Material | Missing until visible/provided | Avoid unsupported material claims |
 | Size/dimensions | Missing until provided | Avoid guessing exact measurements |
@@ -182,14 +180,14 @@ This model is important because the PRD repeatedly says the AI must separate det
 2. User uploads one or more product images.
 3. App shows image thumbnails and product isolation previews.
 4. User can remove images and select the main image.
-5. User enters optional seller inputs:
+5. User enters seller inputs:
    - product note
    - category hint
    - brand/tone
    - target market
-   - price
+   - price, required for Ready to Export
+   - stock, required for Ready to Export
    - stock
-   - SKU
 6. User clicks `Generate Shopee Listing Draft`.
 7. Backend analyzes uploaded images and seller inputs.
 8. App displays generation progress:
@@ -255,25 +253,7 @@ Important behavior:
    - metadata per image
    - missing field warnings
    - readiness score and status
-6. CSV export can be added after JSON export.
-
-### Workflow 5: Catalog Dashboard
-
-1. User saves a generated listing into catalog.
-2. Catalog table shows:
-   - main image
-   - product title
-   - category
-   - SKU
-   - price
-   - readiness status
-   - readiness score
-3. User can search by product name or SKU.
-4. User can filter by readiness status.
-5. User can open product detail for review/edit.
-6. User can select products for export.
-
-For hackathon MVP, catalog can be browser-local state first. Persistent storage can wait.
+6. CSV export is not included in this phase.
 
 ---
 
@@ -292,8 +272,8 @@ For hackathon MVP, catalog can be browser-local state first. Persistent storage 
 
 1. **Upload And Seller Hints**
    - Add optional product note field.
-   - Add optional SKU, stock, brand, weight, dimensions fields.
-   - Keep price input.
+   - Add required price and stock fields.
+   - Add optional brand, weight, and dimensions fields.
    - Add main-image selection.
 
 2. **Listing Draft Panel**
@@ -309,7 +289,6 @@ For hackathon MVP, catalog can be browser-local state first. Persistent storage 
      - brand
      - price
      - stock
-     - SKU
      - attributes
      - variations
 
@@ -323,14 +302,9 @@ For hackathon MVP, catalog can be browser-local state first. Persistent storage 
    - Status: Draft, Needs Review, Ready to Export, Exported.
    - Checklist grouped by importance.
 
-5. **Catalog Dashboard**
-   - Add a compact product table below or in a tab.
-   - Start with browser-local saved products.
-
-6. **Export Modal**
+5. **Export Modal**
    - Shows export summary and warnings.
-   - Supports JSON first.
-   - CSV can be added once field mapping is stable.
+   - Supports JSON export only.
 
 ---
 
@@ -344,7 +318,7 @@ Use PRD weights:
 | Product description quality | 20 |
 | Product image availability | 15 |
 | Attribute completeness | 20 |
-| Price / stock / SKU readiness | 10 |
+| Price / stock readiness | 10 |
 | Buyer trust information | 10 |
 | AI confidence / user confirmation | 10 |
 
@@ -354,7 +328,7 @@ Initial rules:
 - Product name: full points if title exists and user has reviewed or edited it.
 - Description: full points if at least 80 characters and no unsupported claim flags.
 - Attributes: partial points based on confirmed required/suggested attributes.
-- Price/stock/SKU: score price and stock higher than SKU.
+- Price/stock: required for Ready to Export and should receive full score only when both are provided.
 - Buyer trust: score if seller provides warranty, care, material, dimensions, or relevant shipping/packaging notes.
 - AI confidence: reduce score for low-confidence product type/category or unconfirmed inferred fields.
 
@@ -362,7 +336,7 @@ Statuses:
 
 - `Draft`: generated but not reviewed.
 - `Needs Review`: missing important details or unconfirmed inferred fields.
-- `Ready to Export`: sufficient fields reviewed, no high-risk missing items.
+- `Ready to Export`: sufficient fields reviewed, confirmed category ID selected, price and stock provided, and no high-risk missing items.
 - `Exported`: user exported the product.
 
 ---
@@ -466,8 +440,8 @@ JSON export should include:
   "readiness": {
     "score": 78,
     "status": "Needs Review",
-    "missing_required_fields": [],
-    "missing_recommended_fields": ["dimensions", "material", "stock"]
+    "missing_required_fields": ["stock"],
+    "missing_recommended_fields": ["dimensions", "material"]
   },
   "listing": {
     "product_name": "20L Waterproof Laptop Backpack for School, Work & Travel",
@@ -478,7 +452,6 @@ JSON export should include:
     "brand": "",
     "price": "",
     "stock": "",
-    "sku": "",
     "attributes": {
       "color": "Black",
       "use_case": "School, work, travel"
@@ -500,7 +473,7 @@ JSON export should include:
 }
 ```
 
-CSV export should map the same fields to flat columns after JSON behavior is stable.
+CSV export is intentionally out of scope for this phase. JSON export is the only export format for the next implementation pass.
 
 ---
 
@@ -524,6 +497,7 @@ Tasks:
    - searchable category paths
    - ID-to-path lookup
 2. Add `data/shopee_categories.sample.json` with a small representative snapshot shaped like the official API response.
+   - Prioritize representative records for `Electronics & Gadgets` and `Health & Beauty`.
 3. Add shared listing field model with `value`, `source`, `confidence`, and `needs_user_review`.
 4. Add readiness scoring utility.
 5. Add missing-field detection utility.
@@ -532,7 +506,7 @@ Tasks:
    - AI category suggestion returning an existing `category_id`, not invented text.
    - missing/unconfirmed category ID reducing readiness.
    - AI-generated fields marked reviewable.
-   - price/stock/SKU not invented.
+   - price/stock not invented and required for Ready to Export.
    - missing dimensions/material/warranty flagged.
    - readiness score changes when user-provided fields are present.
 
@@ -546,7 +520,7 @@ Tasks:
 Tasks:
 
 1. Add `POST /api/generate-listing-draft`.
-2. Accept uploaded product references, seller note, category hint, Shopee category ID/path if user selected one, price, stock, SKU, brand, target market, and tone.
+2. Accept uploaded product references, seller note, category hint, Shopee category ID/path if user selected one, required price, required stock, brand, target market, and tone.
 3. Return `product_profile`, `listing_draft`, `missing_fields`, `category_suggestions`, and `readiness`.
 4. Use OpenAI with image inputs for product understanding if available.
 5. Add fallback draft generation from existing form values when OpenAI fails.
@@ -594,8 +568,8 @@ Tasks:
 1. Add seller hint fields:
    - product note
    - brand
+   - price
    - stock
-   - SKU
    - weight
    - dimensions
 2. Add structured editable listing panel:
@@ -618,30 +592,7 @@ Tasks:
 5. Add confirm/override behavior for AI-suggested Shopee category.
 6. Add readiness score display and checklist.
 
-### Phase 4: Catalog Drafts
-
-**Files:**
-
-- Modify: `public/index.html`
-- Modify: `public/styles.css`
-- Modify: `public/app.js`
-
-Tasks:
-
-1. Add save draft action.
-2. Store saved products in browser state/localStorage for demo.
-3. Add catalog table:
-   - image
-   - product name
-   - category
-   - SKU
-   - price
-   - status
-   - score
-4. Add search by product name/SKU.
-5. Add filter by readiness status.
-
-### Phase 5: Export
+### Phase 4: Export
 
 **Files:**
 
@@ -654,8 +605,7 @@ Tasks:
 1. Update export JSON to use the export contract above.
 2. Include selected Shopee preview images.
 3. Include readiness warnings.
-4. Add CSV export after JSON export is verified.
-5. Add export summary modal/panel.
+4. Add export summary modal/panel.
 
 ---
 
@@ -669,26 +619,25 @@ For the next coding pass, implement this narrow slice first:
 4. Add readiness score and missing-field checklist.
 5. Update JSON export to include listing fields and warnings.
 
-Leave catalog dashboard and CSV export for the second coding pass unless time allows.
+Leave Shopee API publishing, CSV export, SKU support, and catalog/dashboard features out of this pass.
 
 ---
 
-## Review Questions
+## Settled Product Decisions
 
-Please review these before implementation:
-
-1. Should price and stock be required for `Ready to Export`, or only recommended?
-2. Should the first implementation save catalog drafts in `localStorage`, or keep them only in memory for the demo?
-3. Should we keep the current preview image workflow on the same page, or split listing review into a second screen/tab?
-4. Which 2-3 product categories should we optimize for first?
-5. Should CSV export be included in the next coding pass, or should we ship JSON export first?
+1. Price and stock are necessary seller inputs and required for `Ready to Export`.
+2. SKU is not needed in this phase.
+3. Product catalog/dashboard features are removed because Shopee Seller Platform already supports product catalog management.
+4. Keep preview image workflow and listing review on the same page first.
+5. Optimize first for `Electronics & Gadgets` and `Health & Beauty`.
+6. Ignore CSV export for now; focus on JSON export.
 
 ---
 
 ## Self-Review
 
 - Placeholder scan: no TBD/TODO placeholders.
-- Scope check: feature is split into first implementation slice plus later catalog/export phases.
+- Scope check: feature is split into first implementation slice plus category, listing draft, review UI, and JSON export phases.
 - Source alignment: chapters 8-24 of the PRD are represented; chapters 1-7 were ignored as requested.
 - Safety alignment: plan explicitly separates detected, provided, inferred, missing, and confirmed data.
 - Current-app alignment: plan keeps the existing preview-polishing flow and extends it with listing draft features rather than replacing it.
