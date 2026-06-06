@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-static.mjs",
     "start": "python3 server.py",
     "test": "node --test && python3 -m unittest discover -s tests -p '*_py_test.py'"
   }

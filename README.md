@@ -42,6 +42,12 @@ OPENAI_IMAGE_MODEL=gpt-image-1.5
 
 `OPENAI_IMAGE_MODEL` is optional. The default is `gpt-image-1.5`.
 
+## Deploy on Vercel
+
+Vercel serves the `public/` directory as the static output. The browser app imports shared modules from `/src/shared/`, so `npm run build` copies `src/shared/pipeline.js` and `src/shared/zip.js` into `public/src/shared/` before deployment.
+
+The Python server is still required for `/api/*` routes when running the full app.
+
 ## Notes
 
 - No package install is required; the app uses Python, Node.js test tooling, and browser built-ins.

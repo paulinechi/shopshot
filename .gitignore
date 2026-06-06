@@ -2,6 +2,8 @@
 .superpowers/
 node_modules/
 exports/
+outputs/
+public/src/
 # pycache
 **/__pycache__/
 **/.pytest_cache/
