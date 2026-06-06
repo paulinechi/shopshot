@@ -25,3 +25,24 @@ test("Vercel API routes expose the Python app endpoints", () => {
     );
   }
 });
+
+test("Vercel config registers Python API routes before static output", () => {
+  const config = JSON.parse(readFileSync("vercel.json", "utf8"));
+
+  assert.deepEqual(config.builds?.[0], {
+    src: "api/*.py",
+    use: "@vercel/python"
+  });
+  assert.deepEqual(config.routes?.[0], {
+    src: "/api/(.*)",
+    dest: "/api/$1.py"
+  });
+  assert.deepEqual(config.routes?.[1], {
+    src: "/",
+    dest: "/index.html"
+  });
+  assert.deepEqual(config.routes?.[2], {
+    src: "/(.*)",
+    dest: "/$1"
+  });
+});
