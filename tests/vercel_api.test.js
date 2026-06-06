@@ -15,8 +15,8 @@ test("Vercel API routes expose the Python app endpoints", () => {
     assert.equal(existsSync(route), true, `${route} should exist`);
     assert.match(
       readFileSync(route, "utf8"),
-      /ScenarioRequestHandler as handler/,
-      `${route} should delegate to the shared Python handler`
+      /class handler\(ScenarioRequestHandler\):/,
+      `${route} should define Vercel's expected handler class`
     );
     assert.match(
       readFileSync(route, "utf8"),
