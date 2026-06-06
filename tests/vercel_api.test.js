@@ -5,9 +5,12 @@ import test from "node:test";
 const apiRoutes = [
   "api/health.py",
   "api/categories.py",
+  "api/template-fields.py",
   "api/remove-background.py",
   "api/generate-scene.py",
-  "api/generate-listing-draft.py"
+  "api/generate-listing-draft.py",
+  "api/export-template-xlsx.py",
+  "api/map-template-row.py"
 ];
 
 test("Vercel API routes expose the Python app endpoints", () => {

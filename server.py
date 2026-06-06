@@ -985,8 +985,7 @@ def build_scene_plans(input_data):
 
 def build_scene_prompt(plan):
     geo = plan["geo"]
-    return " ".join(
-        [
+    parts = [
             f"Create a square 1200x1200 product preview image for {plan['productName']}, a {plan['productCategory']}.",
             "Use the uploaded product photo as the source of truth and primary visual reference.",
             "Preserve the original product exactly as shown in the uploaded photo: keep the same shape, color, material, label, logo, text, packaging, proportions, and all visible details.",
@@ -1006,7 +1005,11 @@ def build_scene_prompt(plan):
             f"Brand tone: {plan['brandTone']}. Audience: {plan['audience']}.",
             f"Visual direction: hero product image, product remains the clear focal point, realistic lighting, clean composition, no fake branding, no unreadable text, and {geo['colorNotes']}.",
         ]
-    )
+    if plan.get("backgroundPrompt"):
+        parts.append(
+            f"User-requested commercial background direction: {plan['backgroundPrompt']}. Apply it only to the scene/background; keep the product unchanged."
+        )
+    return " ".join(parts)
 
 
 def generate_image_metadata(plan, input_data):
