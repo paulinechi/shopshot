@@ -46,21 +46,38 @@ test("buildScenePrompt includes geo, seasonal, product, and brand constraints", 
   assert.match(prompt, /1200x1200/i);
 });
 
-test("buildScenePrompt preserves the uploaded product for Shopee previews", () => {
+test("buildScenePrompt preserves the uploaded product for marketplace previews", () => {
   const [plan] = buildScenePlans({
     count: 1,
     targetGeo: "SG",
     category: "snack pouch",
     brandTone: "clean trustworthy",
-    audience: "Shopee shoppers"
+    audience: "marketplace shoppers"
   });
 
   const prompt = buildScenePrompt(plan);
 
-  assert.match(prompt, /Shopee/i);
+  assert.match(prompt, /marketplace/i);
   assert.match(prompt, /preserve the exact uploaded product/i);
   assert.match(prompt, /do not redesign/i);
   assert.match(prompt, /do not invent/i);
+});
+
+test("buildScenePrompt includes user commercial background direction", () => {
+  const [plan] = buildScenePlans({
+    count: 1,
+    targetGeo: "SG",
+    category: "skincare",
+    brandTone: "premium",
+    audience: "urban shoppers",
+    backgroundPrompt: "bright bathroom shelf with clean tiles"
+  });
+
+  const prompt = buildScenePrompt(plan);
+
+  assert.match(prompt, /bright bathroom shelf/i);
+  assert.match(prompt, /scene\/background/i);
+  assert.match(prompt, /product unchanged/i);
 });
 
 test("generateImageMetadata creates marketplace-ready fields", () => {

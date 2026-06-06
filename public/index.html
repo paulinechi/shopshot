@@ -3,234 +3,404 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Shopee Product Preview Polisher</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <title>ShopShot</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    <main class="app-shell">
-      <section class="workspace">
-        <div class="panel input-panel">
-          <div class="brand-row">
-            <div>
-              <p class="eyebrow">Steps 1-5</p>
-              <h1>Shopee Product Preview Polisher</h1>
+    <div class="dashboard-shell">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="brand">
+            <div class="brand-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2.75l1.91 5.34 5.34 1.91-5.34 1.91L12 17.25l-1.91-5.34-5.34-1.91 5.34-1.91L12 2.75z" fill="currentColor" />
+              </svg>
             </div>
-            <span id="apiStatus" class="status-pill">Checking API</span>
+            <div>
+              <p class="brand-title">ShopShot</p>
+              <p class="brand-caption">E-commerce Product Listing AI Copilot</p>
+            </div>
           </div>
 
-          <label class="dropzone" for="productImage">
-            <input id="productImage" type="file" accept="image/*" multiple>
-            <span>Upload product photos</span>
-            <small>PNG or JPG. Upload multiple angles; the app isolates each product reference.</small>
-          </label>
-          <div id="uploadStrip" class="upload-strip"></div>
-
-          <div class="form-grid">
-            <label>
-              Product name
-              <input id="productName" value="Glow Ritual Set">
-            </label>
-            <label>
-              Category
-              <input id="category" value="beauty gift set">
-            </label>
-            <label>
-              Shopee category
-              <select id="shopeeCategory">
-                <option value="">AI suggest or select</option>
-              </select>
-            </label>
-            <label>
-              Brand tone
-              <input id="brandTone" value="premium, warm, trustworthy">
-            </label>
-            <label>
-              Audience
-              <input id="audience" value="urban millennial shoppers">
-            </label>
-            <label>
-              Product note
-              <input id="productNote" placeholder="e.g. waterproof, 20L, sensitive skin">
-            </label>
-            <label>
-              Brand
-              <input id="brand" placeholder="Seller-provided brand">
-            </label>
-            <label>
-              Price
-              <input id="price" type="number" min="0" step="0.01" placeholder="Required">
-            </label>
-            <label>
-              Stock
-              <input id="stock" type="number" min="0" step="1" placeholder="Required">
-            </label>
-            <label>
-              Weight
-              <input id="weight" placeholder="Optional, e.g. 0.5 kg">
-            </label>
-            <label>
-              Dimensions
-              <input id="dimensions" placeholder="Optional, e.g. 20 x 10 x 5 cm">
-            </label>
-            <label>
-              Target geo
-              <select id="targetGeo">
-                <option value="SG">Singapore</option>
-                <option value="PH">Philippines</option>
-                <option value="IN">India</option>
-                <option value="US">United States</option>
-                <option value="SEA">Southeast Asia</option>
-              </select>
-            </label>
-            <label>
-              Variants
-              <input id="count" type="number" min="1" max="10" value="8">
-            </label>
-          </div>
-
-          <div class="mode-row">
-            <label class="radio-card">
-              <input type="radio" name="mode" value="openai" checked>
-              <span>OpenAI polish + fallback</span>
-            </label>
-            <label class="radio-card">
-              <input type="radio" name="mode" value="local">
-              <span>Local polish demo</span>
-            </label>
-          </div>
-
-          <div class="action-row">
-            <button id="generateButton" class="primary-button">Polish previews</button>
-            <button id="exportButton" class="secondary-button" disabled>Export ZIP</button>
-          </div>
+          <nav class="nav-list" aria-label="Workflow">
+            <button class="nav-link is-active" data-tab-target="create" type="button">
+              <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg></span>
+              <span>Create Listing</span>
+            </button>
+            <button class="nav-link" data-tab-target="previews" type="button">
+              <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg></span>
+              <span>Preview Assets</span>
+            </button>
+            <button class="nav-link" data-tab-target="exports" type="button">
+              <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10M8 8l4-4 4 4M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+              <span>Exports</span>
+            </button>
+          </nav>
         </div>
 
-        <div class="preview-stack">
-          <section class="panel">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Step 2</p>
-                <h2>Product isolation</h2>
-              </div>
-              <span class="muted">Canvas preview</span>
-            </div>
-            <canvas id="isolationCanvas" width="900" height="600"></canvas>
-          </section>
+        <div class="sidebar-bottom">
+          <div class="sidebar-stat">
+            <span>Template source</span>
+            <strong>Marketplace XLSX</strong>
+          </div>
+        </div>
+      </aside>
 
-          <section class="panel">
-            <div class="section-heading">
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-row">
+            <div>
+              <h1>Product Listing Studio</h1>
+            </div>
+            <div class="topbar-actions">
+              <span id="apiStatus" class="status-pill">Checking API</span>
+              <button class="topbar-tab" data-tab-target="catalog" type="button">Inventory</button>
+              <button class="topbar-tab is-active" data-tab-target="create" type="button">Create</button>
+              <button id="exportButton" class="create-button" disabled>
+                <span class="create-plus">+</span>
+                <span>Export ZIP</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <section class="content-column">
+          <section class="tab-panel is-active" data-tab-panel="create">
+            <div class="create-subbar">
               <div>
-                <p class="eyebrow">Pipeline</p>
-                <h2>Run status</h2>
+                <p class="eyebrow">Model controls</p>
+                <h2>Create Listing</h2>
+              </div>
+              <div class="model-controls">
+                <label class="model-select">
+                  <span>Image model</span>
+                  <select id="imageModel"></select>
+                </label>
+                <label class="model-select">
+                  <span>Text model</span>
+                  <select id="textModel"></select>
+                </label>
               </div>
             </div>
-            <div class="progress-shell">
-              <div id="progressBar" class="progress-bar"></div>
-            </div>
-            <p id="progressLabel" class="progress-label">Waiting to polish</p>
-            <ol id="pipelineStatus" class="timeline"></ol>
+
+            <section class="hero-card create-hero">
+              <div>
+                <p class="eyebrow">New listing flow</p>
+                <h2>Polish product photos and produce marketplace-ready metadata</h2>
+                <p class="support-copy">Upload product references, confirm the seller-owned fields required by the upload template, and generate preview assets that preserve the original object.</p>
+              </div>
+              <div class="progress-mini">
+                <span class="progress-mini-label">Template readiness</span>
+                <strong id="readinessScore">0/100</strong>
+              </div>
+            </section>
+
+            <section class="two-up-grid">
+              <div class="panel-card input-panel">
+                <div class="panel-card-head">
+                  <div>
+                    <p class="eyebrow">Product input</p>
+                    <h3>Seller details</h3>
+                  </div>
+                  <span class="tag tag-soft">Required fields</span>
+                </div>
+
+                <label class="dropzone" for="productImage">
+                  <input id="productImage" type="file" accept="image/*" multiple>
+                  <span>Upload product photos</span>
+                  <small>PNG or JPG. Multiple angles improve preview polish.</small>
+                </label>
+                <div id="uploadStrip" class="upload-strip"></div>
+
+                <div class="form-grid">
+                  <label class="field">
+                    <span>Product name</span>
+                    <input id="productName" value="Glow Ritual Set">
+                  </label>
+                  <label class="field">
+                    <span>Marketplace category</span>
+                    <input id="shopeeCategorySearch" list="shopeeCategoryOptions" placeholder="Search category ID or name">
+                    <datalist id="shopeeCategoryOptions"></datalist>
+                    <input id="shopeeCategory" type="hidden">
+                    <input id="category" type="hidden" value="">
+                  </label>
+                  <label class="field">
+                    <span>Brand tone</span>
+                    <input id="brandTone" value="premium, warm, trustworthy">
+                  </label>
+                  <label class="field">
+                    <span>Audience</span>
+                    <input id="audience" value="urban millennial shoppers">
+                  </label>
+                  <label class="field">
+                    <span>Product note</span>
+                    <input id="productNote" placeholder="e.g. waterproof, 20L, sensitive skin">
+                  </label>
+                  <label class="field">
+                    <span>Brand</span>
+                    <input id="brand" placeholder="Seller-provided brand">
+                  </label>
+                  <label class="field">
+                    <span>Price</span>
+                    <input id="price" type="number" min="0" step="0.01" placeholder="Required">
+                  </label>
+                  <label class="field">
+                    <span>Stock</span>
+                    <input id="stock" type="number" min="0" step="1" placeholder="Required">
+                  </label>
+                  <label class="field">
+                    <span>Weight</span>
+                    <input id="weight" placeholder="Required, e.g. 0.5 kg">
+                  </label>
+                  <label class="field">
+                    <span>Dimensions</span>
+                    <input id="dimensions" placeholder="Required, e.g. 20 x 10 x 5 cm">
+                  </label>
+                  <label class="field">
+                    <span>Target geo</span>
+                    <select id="targetGeo">
+                      <option value="SG">Singapore</option>
+                      <option value="PH">Philippines</option>
+                      <option value="IN">India</option>
+                      <option value="US">United States</option>
+                      <option value="SEA">Southeast Asia</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Variants</span>
+                    <input id="count" type="number" min="1" max="10" value="8">
+                  </label>
+                </div>
+
+                <section class="background-tool">
+                  <div class="panel-card-head compact-head">
+                    <div>
+                      <p class="eyebrow">AI background</p>
+                      <h3>Commercial scene prompt</h3>
+                    </div>
+                    <span class="tag tag-soft">After isolation</span>
+                  </div>
+                  <label class="field prompt-field">
+                    <span>Background prompt</span>
+                    <textarea id="backgroundPrompt" rows="4" placeholder="e.g. Bright HDB bathroom shelf with soft daylight, clean tiles, and premium retail shadows"></textarea>
+                    <div id="backgroundIdeas" class="idea-popover"></div>
+                  </label>
+                </section>
+
+                <div class="mode-row">
+                  <label class="radio-card">
+                    <input type="radio" name="mode" value="openai" checked>
+                    <span>OpenAI polish + fallback</span>
+                  </label>
+                  <label class="radio-card">
+                    <input type="radio" name="mode" value="local">
+                    <span>Local polish demo</span>
+                  </label>
+                </div>
+
+                <div class="button-row">
+                  <button id="generateButton" class="secondary-action-button">Polish previews</button>
+                </div>
+              </div>
+            </section>
           </section>
-        </div>
-      </section>
 
-      <section class="results-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Steps 3-5</p>
-            <h2>Shopee preview variations and export bundle</h2>
-          </div>
-          <span id="resultSummary" class="muted">No previews polished yet</span>
-        </div>
-        <div id="sceneGrid" class="scene-grid"></div>
-      </section>
+          <section class="tab-panel" data-tab-panel="previews">
+            <section class="panel-card run-status-card">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Pipeline</p>
+                    <h2>Run status</h2>
+                  </div>
+                </div>
+                <div class="progress-shell">
+                  <div id="progressBar" class="progress-bar"></div>
+                </div>
+                <p id="progressLabel" class="progress-label">Waiting to polish</p>
+                <ol id="pipelineStatus" class="timeline"></ol>
+            </section>
 
-      <section class="listing-layout">
-        <div class="panel listing-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Listing</p>
-              <h2>Shopee listing draft</h2>
-            </div>
-            <span id="readinessPill" class="status-pill warn">Needs draft</span>
-          </div>
+            <section class="preview-layout-grid">
+              <div class="panel-card preview-isolation-card">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Product isolation</p>
+                    <h2>Canvas preview</h2>
+                  </div>
+                </div>
+                <canvas id="isolationCanvas" width="900" height="600"></canvas>
+              </div>
+            </section>
 
-          <div class="listing-grid">
-            <label>
-              Shopee title
-              <input id="listingTitle" placeholder="Generated after polishing previews">
-            </label>
-            <label>
-              Confirmed category
-              <input id="listingCategory" readonly placeholder="Category ID and path">
-            </label>
-            <label class="wide-field">
-              Product description
-              <textarea id="listingDescription" rows="5" placeholder="Generated Shopee description"></textarea>
-            </label>
-            <label class="wide-field">
-              Highlights
-              <textarea id="listingHighlights" rows="4" placeholder="Generated product highlights"></textarea>
-            </label>
-            <label>
-              Price
-              <input id="listingPrice" type="number" min="0" step="0.01">
-            </label>
-            <label>
-              Stock
-              <input id="listingStock" type="number" min="0" step="1">
-            </label>
-          </div>
-        </div>
+            <section class="results-section panel-card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Preview assets</p>
+                  <h2>Product preview variations</h2>
+                </div>
+                <span id="resultSummary" class="muted">No previews polished yet</span>
+              </div>
+              <div id="sceneGrid" class="scene-grid"></div>
+            </section>
 
-        <div class="panel readiness-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Readiness</p>
-              <h2>Export checks</h2>
-            </div>
-            <strong id="readinessScore">0/100</strong>
-          </div>
-          <div class="readiness-meter">
-            <div id="readinessFill"></div>
-          </div>
-          <div id="missingFields" class="missing-list"></div>
-          <div class="tag-block">
-            <h3>SEO keywords</h3>
-            <div id="listingKeywords" class="tag-list"></div>
-          </div>
-          <div class="tag-block">
-            <h3>Hashtags</h3>
-            <div id="listingHashtags" class="tag-list"></div>
-          </div>
-        </div>
-      </section>
+            <section class="panel-card listing-panel">
+              <div class="panel-card-head">
+                <div>
+                  <p class="eyebrow">Listing draft</p>
+                  <h3>Template fields</h3>
+                </div>
+                <span id="readinessPill" class="status-pill warn">Needs draft</span>
+              </div>
+              <div class="listing-grid">
+                <label class="field">
+                  <span>Listing title</span>
+                  <input id="listingTitle" placeholder="Generated after polishing previews">
+                </label>
+                <label class="field">
+                  <span>Confirmed category</span>
+                  <input id="listingCategory" readonly placeholder="Category ID and path">
+                </label>
+                <label class="field wide-field">
+                  <span>Product description</span>
+                  <textarea id="listingDescription" rows="5" placeholder="Generated product description"></textarea>
+                </label>
+                <label class="field wide-field">
+                  <span>Highlights</span>
+                  <textarea id="listingHighlights" rows="4" placeholder="Generated product highlights"></textarea>
+                </label>
+                <label class="field">
+                  <span>Price</span>
+                  <input id="listingPrice" type="number" min="0" step="0.01">
+                </label>
+                <label class="field">
+                  <span>Stock</span>
+                  <input id="listingStock" type="number" min="0" step="1">
+                </label>
+              </div>
+              <div class="button-row">
+                <button id="saveCatalogButton" class="secondary-action-button" disabled>Add current listing</button>
+              </div>
+            </section>
+          </section>
 
-      <section class="metadata-layout">
-        <div class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Step 4</p>
-              <h2>Metadata JSON</h2>
-            </div>
-          </div>
-          <pre id="metadataPreview">{}</pre>
-        </div>
-        <div class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Templates</p>
-              <h2>Marketplace exports</h2>
-            </div>
-          </div>
-          <div class="template-list">
-            <div><strong>Shopee</strong><span>1200x1200 PNG/WebP, gallery-ready JSON fields</span></div>
-            <div><strong>Lazada</strong><span>1200x1200 product gallery images and SEO tags</span></div>
-            <div><strong>TikTok Shop</strong><span>Square assets, alt text, short-form hashtags</span></div>
-          </div>
-        </div>
-      </section>
-    </main>
+          <section class="tab-panel" data-tab-panel="catalog">
+            <section id="catalog" class="catalog-section">
+              <div class="catalog-header">
+                <div>
+                  <p class="eyebrow">Inventory</p>
+                  <h2>Product catalog</h2>
+                </div>
+                <div class="catalog-actions">
+                  <label class="search-box compact">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" /><path d="M16 16l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+                    <input id="catalogSearch" placeholder="Find product">
+                  </label>
+                  <label class="pill-select">
+                    <select id="catalogStatusFilter">
+                      <option value="all">All statuses</option>
+                      <option value="Ready to Export">Ready</option>
+                      <option value="Needs Review">Needs Review</option>
+                      <option value="Draft">Draft</option>
+                    </select>
+                  </label>
+                  <button id="exportTemplateButton" class="export-button" disabled>Export template row</button>
+                </div>
+              </div>
+
+              <div class="catalog-grid">
+                <section class="catalog-table-card">
+                  <div class="catalog-table catalog-table-head">
+                    <span></span>
+                    <span>Product</span>
+                    <span>Category</span>
+                    <span>Price</span>
+                    <span>Stock</span>
+                    <span>Status</span>
+                    <span>Readiness</span>
+                  </div>
+                  <div id="catalogRows"></div>
+                </section>
+
+                <aside class="health-card">
+                  <p>Catalog health</p>
+                  <strong id="catalogHealthScore">0%</strong>
+                  <div class="sparkles" aria-hidden="true">**</div>
+                  <div class="health-track"><span id="catalogHealthFill"></span></div>
+                  <span id="catalogHealthText">Create a listing draft to start readiness tracking.</span>
+                  <div class="template-summary">
+                    <b>Upload template</b>
+                    <span id="templateFieldCount">Loading template fields...</span>
+                  </div>
+                </aside>
+              </div>
+            </section>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="exports">
+            <section class="export-grid">
+              <div class="panel-card">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Upload checks</p>
+                    <h2>Readiness</h2>
+                  </div>
+                </div>
+                <div class="readiness-meter">
+                  <div id="readinessFill"></div>
+                </div>
+                <div id="missingFields" class="missing-list"></div>
+              </div>
+
+              <div class="panel-card">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">SEO metadata</p>
+                    <h2>Keywords</h2>
+                  </div>
+                </div>
+                <div class="tag-block">
+                  <h3>Keywords</h3>
+                  <div id="listingKeywords" class="tag-list"></div>
+                </div>
+                <div class="tag-block">
+                  <h3>Hashtags</h3>
+                  <div id="listingHashtags" class="tag-list"></div>
+                </div>
+              </div>
+
+              <div class="panel-card">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Marketplace exports</p>
+                    <h2>Output bundle</h2>
+                  </div>
+                </div>
+                <div class="template-list">
+                  <div><strong>Template XLSX</strong><span>XLSX-aligned TSV, PNG/WebP, JSON</span></div>
+                  <div><strong>Lazada</strong><span>Square assets and SEO metadata</span></div>
+                  <div><strong>TikTok Shop</strong><span>Square assets and hashtags</span></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel-card metadata-card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Step 4</p>
+                  <h2>Metadata JSON</h2>
+                </div>
+                <div class="section-actions">
+                  <button id="exportTemplateXlsxButton" class="secondary-action-button" type="button">Export template .xlsx</button>
+                  <button id="copyMetadataButton" class="ghost-action-button" type="button">Copy</button>
+                </div>
+              </div>
+              <pre id="metadataPreview">{}</pre>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
+    <div id="inventoryToast" class="global-toast" role="status"></div>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

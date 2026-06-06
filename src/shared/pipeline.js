@@ -86,6 +86,7 @@ export function buildScenePlans(input = {}) {
   const category = clean(input.category || "general product");
   const brandTone = clean(input.brandTone || "marketplace-ready");
   const audience = clean(input.audience || "online shoppers");
+  const backgroundPrompt = clean(input.backgroundPrompt || "");
   const selectedScenes = selectBalancedScenes(count);
 
   return selectedScenes.map(([categoryName, sceneType, description], index) => ({
@@ -98,6 +99,7 @@ export function buildScenePlans(input = {}) {
     productCategory: category,
     brandTone,
     audience,
+    backgroundPrompt,
     geo,
     dimensions: {
       square: "1200x1200",
@@ -109,8 +111,8 @@ export function buildScenePlans(input = {}) {
 }
 
 export function buildScenePrompt(plan) {
-  return [
-    `Create a square 1200x1200 Shopee product preview image for ${plan.productName}, a ${plan.productCategory}.`,
+  const parts = [
+    `Create a square 1200x1200 marketplace product preview image for ${plan.productName}, a ${plan.productCategory}.`,
     `Use the uploaded product photo as the source of truth: preserve the exact uploaded product shape, color, material, label, logo, text, packaging, proportions, and visible details.`,
     `Do not redesign the product, do not invent new packaging, do not change branding, and do not turn it into a different object.`,
     `Only polish listing presentation: cleaner lighting, sharper edges, natural shadows, tidy marketplace composition, and an appropriate subtle background or context.`,
@@ -118,8 +120,12 @@ export function buildScenePrompt(plan) {
     `Target market: ${plan.geo.market}, ${plan.geo.region}. Use ${plan.geo.aesthetic}.`,
     `Seasonal and cultural filters: ${plan.geo.seasonalMarkers.join(", ")}; ${plan.geo.culturalMarkers.join(", ")}.`,
     `Brand tone: ${plan.brandTone}. Audience: ${plan.audience}.`,
-    `Visual direction: Shopee listing hero, product remains the clear subject, realistic lighting, no fake logos, no unreadable text, ${plan.geo.colorNotes}.`
-  ].join(" ");
+    `Visual direction: marketplace listing hero, product remains the clear subject, realistic lighting, no fake logos, no unreadable text, ${plan.geo.colorNotes}.`
+  ];
+  if (plan.backgroundPrompt) {
+    parts.push(`User-requested commercial background direction: ${plan.backgroundPrompt}. Apply it only to the scene/background; keep the product unchanged.`);
+  }
+  return parts.join(" ");
 }
 
 export function generateImageMetadata(plan, input = {}) {
@@ -150,7 +156,7 @@ export function generateImageMetadata(plan, input = {}) {
     keywords: unique(baseKeywords).slice(0, 10),
     seoTags,
     altText: `${productName} shown in a ${plan.sceneType} ${plan.geo.market} product scene for ${plan.audience}.`,
-    shopeeDescription: `${productName} styled for ${plan.geo.market} shoppers in a ${plan.sceneType} scene. Designed for ${plan.brandTone} brand positioning and fast marketplace listing creation.`,
+    marketplaceDescription: `${productName} styled for ${plan.geo.market} shoppers in a ${plan.sceneType} scene. Designed for ${plan.brandTone} brand positioning and fast marketplace listing creation.`,
     tiktokHashtags: seoTags.slice(0, 6).map((tag) => `#${tag.replace(/-/g, "")}`),
     platformTemplates: {
       shopee: {

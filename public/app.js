@@ -12,7 +12,11 @@ const state = {
   scenes: [],
   metadata: [],
   categories: [],
-  listingDraft: null
+  listingDraft: null,
+  templateFields: [],
+  catalogProducts: loadCatalogProducts(),
+  catalogStatusFilter: "all",
+  catalogQuery: ""
 };
 
 const els = {
@@ -33,12 +37,29 @@ const els = {
   readinessFill: document.querySelector("#readinessFill"),
   missingFields: document.querySelector("#missingFields"),
   listingKeywords: document.querySelector("#listingKeywords"),
-  listingHashtags: document.querySelector("#listingHashtags")
+  listingHashtags: document.querySelector("#listingHashtags"),
+  catalogRows: document.querySelector("#catalogRows"),
+  catalogHealthScore: document.querySelector("#catalogHealthScore"),
+  catalogHealthFill: document.querySelector("#catalogHealthFill"),
+  catalogHealthText: document.querySelector("#catalogHealthText"),
+  catalogStatusFilter: document.querySelector("#catalogStatusFilter"),
+  catalogSearch: document.querySelector("#catalogSearch"),
+  saveCatalogButton: document.querySelector("#saveCatalogButton"),
+  exportTemplateButton: document.querySelector("#exportTemplateButton"),
+  templateFieldCount: document.querySelector("#templateFieldCount"),
+  backgroundIdeas: document.querySelector("#backgroundIdeas"),
+  shopeeCategoryOptions: document.querySelector("#shopeeCategoryOptions"),
+  inventoryToast: document.querySelector("#inventoryToast"),
+  copyMetadataButton: document.querySelector("#copyMetadataButton"),
+  exportTemplateXlsxButton: document.querySelector("#exportTemplateXlsxButton")
 };
 
 const fields = [
+  "imageModel",
+  "textModel",
   "productName",
   "category",
+  "shopeeCategorySearch",
   "shopeeCategory",
   "brandTone",
   "audience",
@@ -48,6 +69,7 @@ const fields = [
   "stock",
   "weight",
   "dimensions",
+  "backgroundPrompt",
   "targetGeo",
   "count",
   "listingTitle",
@@ -62,7 +84,7 @@ const fields = [
 const PIPELINE_STEPS = [
   "Seller photo and metadata captured",
   "Product isolated into clean preview",
-  "Shopee preview variants polished",
+  "Preview variants polished",
   "Metadata JSON generated",
   "PNG, WebP, and metadata ZIP ready"
 ];
@@ -74,20 +96,73 @@ async function init() {
   drawIsolationPlaceholder();
   await refreshApiStatus();
   await loadCategories();
+  await loadTemplateFields();
+  renderCatalog();
   els.productImage.addEventListener("change", handleImageUpload);
   els.generateButton.addEventListener("click", generateScenes);
   els.exportButton.addEventListener("click", exportZip);
+  els.saveCatalogButton.addEventListener("click", saveCurrentListingToCatalog);
+  els.exportTemplateButton.addEventListener("click", exportTemplateRow);
+  els.copyMetadataButton.addEventListener("click", copyMetadataPayload);
+  els.exportTemplateXlsxButton.addEventListener("click", exportTemplateXlsx);
+  document.querySelectorAll("[data-tab-target]").forEach((button) => {
+    button.addEventListener("click", () => activateTab(button.dataset.tabTarget));
+  });
+  fields.backgroundPrompt.addEventListener("focus", renderBackgroundIdeas);
+  fields.backgroundPrompt.addEventListener("input", renderBackgroundIdeas);
+  fields.backgroundPrompt.addEventListener("blur", () => {
+    window.setTimeout(() => els.backgroundIdeas.classList.remove("is-visible"), 140);
+  });
+  for (const field of [fields.productName, fields.category, fields.brandTone, fields.audience, fields.targetGeo]) {
+    field.addEventListener("input", () => {
+      if (document.activeElement === fields.backgroundPrompt) renderBackgroundIdeas();
+    });
+    field.addEventListener("change", () => {
+      if (document.activeElement === fields.backgroundPrompt) renderBackgroundIdeas();
+    });
+  }
+  fields.shopeeCategorySearch.addEventListener("input", syncShopeeCategorySearch);
+  fields.shopeeCategorySearch.addEventListener("change", syncShopeeCategorySearch);
+  els.catalogStatusFilter.addEventListener("change", () => {
+    state.catalogStatusFilter = els.catalogStatusFilter.value;
+    renderCatalog();
+  });
+  els.catalogSearch.addEventListener("input", () => {
+    state.catalogQuery = els.catalogSearch.value.trim().toLowerCase();
+    renderCatalog();
+  });
+  for (const field of [fields.listingTitle, fields.listingPrice, fields.listingStock, fields.productName, fields.price, fields.stock, fields.weight, fields.dimensions]) {
+    field.addEventListener("input", () => {
+      if (state.listingDraft) upsertCurrentListingInCatalog();
+      renderCatalog();
+    });
+  }
 }
 
 async function refreshApiStatus() {
   try {
     const response = await fetch("/api/health");
     const health = await response.json();
-    els.apiStatus.textContent = health.openaiConfigured ? `OpenAI ${health.imageModel}` : "Local fallback";
+    populateModelSelect(fields.imageModel, health.imageModelOptions || [health.imageModel], health.imageModel);
+    populateModelSelect(fields.textModel, health.textModelOptions || [health.textModel], health.textModel);
+    els.apiStatus.textContent = health.openaiConfigured ? "OpenAI ready" : "Local fallback";
     els.apiStatus.classList.toggle("warn", !health.openaiConfigured);
   } catch {
+    populateModelSelect(fields.imageModel, ["gpt-image-2", "gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"], "gpt-image-1.5");
+    populateModelSelect(fields.textModel, ["gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.1"], "gpt-5.5");
     els.apiStatus.textContent = "Offline fallback";
     els.apiStatus.classList.add("warn");
+  }
+}
+
+function populateModelSelect(select, options, selected) {
+  select.innerHTML = "";
+  for (const model of options.filter(Boolean)) {
+    const option = document.createElement("option");
+    option.value = model;
+    option.textContent = model;
+    option.selected = model === selected;
+    select.append(option);
   }
 }
 
@@ -96,16 +171,39 @@ async function loadCategories() {
     const response = await fetch("/api/categories");
     const payload = await response.json();
     state.categories = payload.categories || [];
-    fields.shopeeCategory.innerHTML = `<option value="">AI suggest or select</option>`;
+    fields.shopeeCategory.value = "";
+    els.shopeeCategoryOptions.innerHTML = "";
     for (const category of state.categories) {
       if (category.has_children) continue;
       const option = document.createElement("option");
-      option.value = String(category.category_id);
-      option.textContent = category.display_path;
-      fields.shopeeCategory.append(option);
+      option.value = `${category.category_id} · ${category.display_path}`;
+      els.shopeeCategoryOptions.append(option);
     }
   } catch {
     state.categories = [];
+  }
+}
+
+function syncShopeeCategorySearch() {
+  const query = fields.shopeeCategorySearch.value.trim().toLowerCase();
+  const match = state.categories.find((category) => {
+    const label = `${category.category_id} · ${category.display_path}`.toLowerCase();
+    return label === query || String(category.category_id) === query;
+  });
+  fields.shopeeCategory.value = match ? String(match.category_id) : "";
+  fields.category.value = match?.display_path || "";
+}
+
+async function loadTemplateFields() {
+  try {
+    const response = await fetch("/api/template-fields");
+    const payload = await response.json();
+    state.templateFields = payload.fields || [];
+    const required = state.templateFields.filter((field) => field.requirement === "Mandatory").length;
+    els.templateFieldCount.textContent = `${state.templateFields.length} columns parsed, ${required} mandatory`;
+  } catch {
+    state.templateFields = [];
+    els.templateFieldCount.textContent = "Template parser unavailable";
   }
 }
 
@@ -126,22 +224,26 @@ async function handleImageUpload(event) {
   state.isolatedImages = [];
   renderUploadStrip();
   drawIsolationPreview();
-  setProgress(0, state.productImages.length, "Removing backgrounds...");
-
-  await removeBackgrounds();
-  renderUploadStrip();
-  drawIsolationPreview();
-  renderPipelineStatus(2);
+  setProgress(0, state.productImages.length, "Photos uploaded. Click Polish previews to remove backgrounds.");
+  renderPipelineStatus(1);
 }
 
 async function generateScenes() {
+  activateTab("previews");
   els.generateButton.disabled = true;
   els.exportButton.disabled = true;
   els.generateButton.textContent = "Polishing...";
-  renderPipelineStatus(state.productImages.length ? 2 : 1);
+  renderPipelineStatus(state.productImages.length ? 1 : 0);
 
   const input = getInput();
   const localPayload = buildGenerationPayload(input);
+  if (state.productImages.length && !state.isolatedImages.length) {
+    setProgress(0, state.productImages.length, "Removing backgrounds...");
+    await removeBackgrounds();
+    renderUploadStrip();
+    drawIsolationPreview();
+    renderPipelineStatus(2);
+  }
   const productImages = await getProductReferencePayloads();
   state.metadata = localPayload.metadata;
   state.scenes = [];
@@ -185,14 +287,14 @@ async function generateScenes() {
   await generateListingDraft(productImages);
   renderMetadata();
   renderPipelineStatus(5);
-  els.resultSummary.textContent = `${state.scenes.length} Shopee previews ready`;
+  els.resultSummary.textContent = `${state.scenes.length} product previews ready`;
   els.exportButton.disabled = false;
   els.generateButton.disabled = false;
   els.generateButton.textContent = "Polish previews";
 }
 
 async function generateListingDraft(productImages) {
-  setProgress(0, 1, "Drafting Shopee listing...");
+  setProgress(0, 1, "Drafting product listing...");
   try {
     const selectedCategory = selectedShopeeCategory();
     const response = await fetch("/api/generate-listing-draft", {
@@ -213,7 +315,7 @@ async function generateListingDraft(productImages) {
     state.listingDraft = buildLocalListingDraft(error.message);
   }
   renderListingDraft();
-  setProgress(1, 1, "Shopee listing draft ready");
+  setProgress(1, 1, "Product listing draft ready");
 }
 
 async function buildSceneOutputs(payload, input) {
@@ -259,7 +361,7 @@ async function removeBackgrounds() {
     const response = await fetch("/api/remove-background", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ images })
+      body: JSON.stringify({ images, imageModel: fields.imageModel.value })
     });
     const payload = await response.json();
 
@@ -292,6 +394,45 @@ async function removeBackgrounds() {
 
   state.isolatedImages = state.productImages.filter((item) => item.isolatedUrl);
   setProgress(state.productImages.length, state.productImages.length, "Background removal complete");
+}
+
+function activateTab(tabName) {
+  document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.tabPanel === tabName);
+  });
+  document.querySelectorAll("[data-tab-target]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.tabTarget === tabName);
+  });
+}
+
+function renderBackgroundIdeas() {
+  const ideas = buildBackgroundIdeas();
+  els.backgroundIdeas.innerHTML = "";
+  for (const idea of ideas) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = idea;
+    button.addEventListener("click", () => {
+      fields.backgroundPrompt.value = idea;
+      els.backgroundIdeas.classList.remove("is-visible");
+    });
+    els.backgroundIdeas.append(button);
+  }
+  els.backgroundIdeas.classList.toggle("is-visible", document.activeElement === fields.backgroundPrompt);
+}
+
+function buildBackgroundIdeas() {
+  const product = fields.productName.value || "product";
+  const category = selectedShopeeCategory()?.display_path || fields.category.value || "marketplace product";
+  const tone = fields.brandTone.value || "clean and trustworthy";
+  const audience = fields.audience.value || "online shoppers";
+  const geo = fields.targetGeo.options[fields.targetGeo.selectedIndex]?.textContent || "Singapore";
+  return [
+    `${product} in a bright ${geo} apartment setting with polished retail lighting, tidy props, and ${tone} styling for ${audience}.`,
+    `${category} on a clean marketplace hero surface with soft natural shadows, subtle regional decor cues, and generous whitespace.`,
+    `${product} in a commercial lifestyle scene tailored to ${geo}, premium but realistic, with the original product centered and unchanged.`,
+    `${category} on a seasonal gift-ready setup with warm daylight, neat packaging cues, and marketplace-safe background details.`
+  ];
 }
 
 function renderUploadStrip() {
@@ -351,7 +492,7 @@ function renderListingDraft() {
   fields.listingTitle.value = listing.title?.value || "";
   fields.listingCategory.value = categoryValue.category_id
     ? `${categoryValue.category_id} · ${categoryValue.category_path}`
-    : "Missing Shopee category";
+    : "";
   fields.listingDescription.value = listing.description?.value || "";
   fields.listingHighlights.value = (listing.highlights || []).map((item) => item.value).join("\n");
   fields.listingPrice.value = listing.price?.value || fields.price.value || "";
@@ -365,6 +506,10 @@ function renderListingDraft() {
   renderTags(els.listingKeywords, listing.keywords || []);
   renderTags(els.listingHashtags, listing.hashtags || []);
   renderMissingFields(draft.missing_fields || []);
+  els.saveCatalogButton.disabled = false;
+  els.exportTemplateButton.disabled = false;
+  upsertCurrentListingInCatalog();
+  renderCatalog();
 }
 
 function renderMissingFields(items) {
@@ -394,19 +539,34 @@ async function exportZip() {
   if (!state.scenes.length) return;
   els.exportButton.disabled = true;
   els.exportButton.textContent = "Bundling...";
+  const listingPayload = exportListingPayload();
+  const templateExport = await buildTemplateExport(listingPayload);
+  const templateWorkbook = await buildTemplateWorkbook(listingPayload);
 
   const files = [
     {
       name: "metadata.json",
       data: JSON.stringify({
         generatedAt: new Date().toISOString(),
-        listing: exportListingPayload(),
+        listing: listingPayload,
         images: state.metadata
       }, null, 2)
     },
     {
       name: "product_listing.json",
-      data: JSON.stringify(exportListingPayload(), null, 2)
+      data: JSON.stringify(listingPayload, null, 2)
+    },
+    {
+      name: "shopee_template_row.tsv",
+      data: templateExport.tsv
+    },
+    {
+      name: "shopee_template_row.json",
+      data: JSON.stringify({ fields: templateExport.fields, row: templateExport.row }, null, 2)
+    },
+    {
+      name: "shopee_template.xlsx",
+      data: new Uint8Array(await templateWorkbook.arrayBuffer())
     }
   ];
 
@@ -441,9 +601,73 @@ async function exportZip() {
   els.exportButton.textContent = "Export ZIP";
 }
 
+async function exportTemplateRow() {
+  els.exportTemplateButton.disabled = true;
+  els.exportTemplateButton.textContent = "Exporting...";
+  const templateExport = await buildTemplateExport(exportListingPayload());
+  downloadText(`${slugify(fields.productName.value || "product")}-shopee-template-row.tsv`, templateExport.tsv, "text/tab-separated-values");
+  els.exportTemplateButton.disabled = false;
+  els.exportTemplateButton.textContent = "Export template row";
+}
+
+async function exportTemplateXlsx() {
+  els.exportTemplateXlsxButton.disabled = true;
+  els.exportTemplateXlsxButton.textContent = "Exporting...";
+  const workbook = await buildTemplateWorkbook(exportListingPayload());
+  const url = URL.createObjectURL(workbook);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${slugify(fields.productName.value || "product")}-shopee-template.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
+  els.exportTemplateXlsxButton.disabled = false;
+  els.exportTemplateXlsxButton.textContent = "Export template .xlsx";
+}
+
+async function buildTemplateWorkbook(listingPayload) {
+  const response = await fetch("/api/export-template-xlsx", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(listingPayload)
+  });
+  if (!response.ok) throw new Error("Template workbook export failed");
+  return response.blob();
+}
+
+async function buildTemplateExport(listingPayload) {
+  try {
+    const response = await fetch("/api/map-template-row", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(listingPayload)
+    });
+    if (!response.ok) throw new Error("Template mapping failed");
+    return response.json();
+  } catch {
+    const fieldsToExport = state.templateFields.length
+      ? state.templateFields
+      : [
+        { key: "ps_category", label: "Category" },
+        { key: "ps_product_name", label: "Product Name" },
+        { key: "ps_product_description", label: "Product Description" },
+        { key: "ps_price", label: "Price" },
+        { key: "ps_stock", label: "Stock" },
+        { key: "ps_item_cover_image", label: "Cover image" }
+      ];
+    const row = mapListingToTemplateRowFallback(listingPayload, fieldsToExport);
+    return {
+      fields: fieldsToExport,
+      row,
+      tsv: `${fieldsToExport.map((field) => field.label).join("\t")}\n${fieldsToExport.map((field) => escapeTsv(row[field.key] || "")).join("\t")}`
+    };
+  }
+}
+
 function getInput() {
   const category = selectedShopeeCategory();
   return {
+    imageModel: fields.imageModel.value,
+    textModel: fields.textModel.value,
     productName: fields.productName.value,
     category: fields.category.value,
     productNote: fields.productNote.value,
@@ -458,6 +682,7 @@ function getInput() {
     stock: fields.stock.value,
     weight: fields.weight.value,
     dimensions: fields.dimensions.value,
+    backgroundPrompt: fields.backgroundPrompt.value,
     targetGeo: fields.targetGeo.value,
     count: Number(fields.count.value) || 8
   };
@@ -474,11 +699,17 @@ function exportListingPayload() {
   const readiness = state.listingDraft?.readiness || { score: 0, status: "Needs Review", suggestions: [] };
   const category = listing.category?.value || selectedShopeeCategory() || {};
   const missing = state.listingDraft?.missing_fields || [];
+  const dimensions = parseDimensionInput(fields.dimensions.value);
   return {
     exported_at: new Date().toISOString(),
-    platform: "Shopee",
+    platform: "Marketplace",
     target_market: fields.targetGeo.value,
-    ready_for_shopee: readiness.status === "Ready to Export",
+    models: {
+      image: fields.imageModel.value,
+      text: fields.textModel.value
+    },
+    background_prompt: fields.backgroundPrompt.value,
+    ready_for_upload: readiness.status === "Ready to Export",
     readiness: {
       score: readiness.score || 0,
       status: readiness.status || "Needs Review",
@@ -494,8 +725,20 @@ function exportListingPayload() {
       brand: fields.brand.value,
       price: fields.listingPrice.value || fields.price.value,
       stock: fields.listingStock.value || fields.stock.value,
+      weight: fields.weight.value || listing.weight?.value || "",
+      length: dimensions.length,
+      width: dimensions.width,
+      height: dimensions.height,
       attributes: listing.attributes || {},
       variations: listing.variations || []
+    },
+    logistics: {
+      weight: fields.weight.value || listing.weight?.value || "",
+      dimensions_text: fields.dimensions.value,
+      length: dimensions.length,
+      width: dimensions.width,
+      height: dimensions.height,
+      shipping_channel: "On"
     },
     images: {
       main_image: state.scenes[0]?.metadata?.fileBaseName ? `png/${state.scenes[0].metadata.fileBaseName}.png` : "",
@@ -507,19 +750,215 @@ function exportListingPayload() {
       hashtags: listing.hashtags || []
     },
     warnings: [
-      "Final manual review in Shopee Seller Centre may still be required."
+      "Final manual review in the seller platform may still be required."
     ]
+  };
+}
+
+function seedCatalogProducts() {
+  return [
+    {
+      id: "sample-powerbank",
+      name: "Compact Fast Charge Power Bank",
+      category: "Electronics & Gadgets",
+      price: "24.90",
+      stock: "85",
+      status: "Ready to Export",
+      readiness: 92,
+      imageUrl: "",
+      source: "sample"
+    },
+    {
+      id: "sample-serum",
+      name: "Brightening Vitamin C Serum",
+      category: "Health & Beauty",
+      price: "18.50",
+      stock: "42",
+      status: "Needs Review",
+      readiness: 68,
+      imageUrl: "",
+      source: "sample"
+    },
+    {
+      id: "sample-massager",
+      name: "Mini Facial Massage Tool",
+      category: "Health & Beauty",
+      price: "",
+      stock: "",
+      status: "Draft",
+      readiness: 38,
+      imageUrl: "",
+      source: "sample"
+    }
+  ];
+}
+
+function loadCatalogProducts() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("shopshotCatalogProducts") || "null");
+    if (Array.isArray(stored) && stored.length) return stored;
+  } catch {
+    return seedCatalogProducts();
+  }
+  return seedCatalogProducts();
+}
+
+function saveCatalogProducts() {
+  const persisted = state.catalogProducts.map(({ payload, ...product }) => product);
+  localStorage.setItem("shopshotCatalogProducts", JSON.stringify(persisted));
+}
+
+function upsertCurrentListingInCatalog() {
+  const payload = exportListingPayload();
+  const listing = payload.listing;
+  const current = {
+    id: "current-listing",
+    name: listing.product_name || fields.productName.value || "Current product",
+    category: listing.category_path || selectedShopeeCategory()?.display_path || fields.category.value || "Category pending",
+    price: listing.price || "",
+    stock: listing.stock || "",
+    status: payload.readiness.status || "Needs Review",
+    readiness: payload.readiness.score || 0,
+    imageUrl: state.scenes[0]?.imageUrl || state.productImages[0]?.isolatedUrl || state.productImages[0]?.sourceUrl || "",
+    source: "current",
+    payload
+  };
+  const index = state.catalogProducts.findIndex((product) => product.id === current.id);
+  if (index >= 0) {
+    state.catalogProducts[index] = current;
+  } else {
+    state.catalogProducts.unshift(current);
+  }
+  saveCatalogProducts();
+}
+
+function saveCurrentListingToCatalog() {
+  if (!state.listingDraft) return;
+  upsertCurrentListingInCatalog();
+  renderCatalog();
+  els.inventoryToast.textContent = "Added to Inventory";
+  window.setTimeout(() => {
+    els.inventoryToast.textContent = "";
+  }, 2400);
+  activateTab("exports");
+}
+
+async function copyMetadataPayload() {
+  const payload = els.metadataPreview.textContent || "{}";
+  try {
+    await navigator.clipboard.writeText(payload);
+    els.copyMetadataButton.textContent = "Copied";
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = payload;
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+    els.copyMetadataButton.textContent = "Copied";
+  }
+  window.setTimeout(() => {
+    els.copyMetadataButton.textContent = "Copy";
+  }, 1800);
+}
+
+function renderCatalog() {
+  const products = filteredCatalogProducts();
+  const average = state.catalogProducts.length
+    ? Math.round(state.catalogProducts.reduce((total, product) => total + product.readiness, 0) / state.catalogProducts.length)
+    : 0;
+  const readyCount = state.catalogProducts.filter((product) => product.status === "Ready to Export").length;
+  const reviewCount = state.catalogProducts.filter((product) => product.status !== "Ready to Export").length;
+
+  els.catalogHealthScore.textContent = `${average}%`;
+  els.catalogHealthFill.style.width = `${average}%`;
+  els.catalogHealthText.textContent = `${readyCount} ready, ${reviewCount} need review across ${state.catalogProducts.length} products`;
+  els.catalogRows.innerHTML = "";
+
+  if (!products.length) {
+    els.catalogRows.innerHTML = `<div class="catalog-empty">No products match this filter.</div>`;
+    return;
+  }
+
+  for (const product of products) {
+    const row = document.createElement("article");
+    row.className = "catalog-table catalog-row";
+    row.innerHTML = `
+      <span class="catalog-thumb">${product.imageUrl ? `<img src="${escapeHtml(product.imageUrl)}" alt="">` : initials(product.name)}</span>
+      <span><b>${escapeHtml(product.name)}</b><small>${product.source === "current" ? "Current listing" : "Catalog item"}</small></span>
+      <span>${escapeHtml(product.category || "Unmapped")}</span>
+      <span>${product.price ? `$${escapeHtml(product.price)}` : "Missing"}</span>
+      <span>${product.stock || product.stock === 0 ? escapeHtml(product.stock) : "Missing"}</span>
+      <span><em class="${product.status === "Ready to Export" ? "ready" : "warn"}">${escapeHtml(product.status)}</em></span>
+      <span class="catalog-readiness"><i><b style="width:${product.readiness}%"></b></i>${product.readiness}%</span>
+    `;
+    els.catalogRows.append(row);
+  }
+}
+
+function filteredCatalogProducts() {
+  return state.catalogProducts.filter((product) => {
+    const statusMatches = state.catalogStatusFilter === "all" || product.status === state.catalogStatusFilter;
+    const haystack = `${product.name} ${product.category} ${product.status}`.toLowerCase();
+    const queryMatches = !state.catalogQuery || haystack.includes(state.catalogQuery);
+    return statusMatches && queryMatches;
+  });
+}
+
+function mapListingToTemplateRowFallback(payload, fieldsToExport) {
+  const listing = payload.listing || {};
+  const images = payload.images || {};
+  const row = Object.fromEntries(fieldsToExport.map((field) => [field.key, ""]));
+  row.ps_category = listing.category_id || "";
+  row.ps_product_name = listing.product_name || "";
+  row.ps_product_description = listing.description || "";
+  row.ps_price = listing.price || "";
+  row.ps_stock = listing.stock || "";
+  row.ps_item_cover_image = images.main_image || "";
+  row.ps_weight = payload.logistics?.weight || listing.weight || "";
+  row.ps_length = payload.logistics?.length || listing.length || "";
+  row.ps_width = payload.logistics?.width || listing.width || "";
+  row.ps_height = payload.logistics?.height || listing.height || "";
+  row["channel_id.1000"] = payload.logistics?.shipping_channel || "On";
+  (images.gallery_images || []).slice(0, 8).forEach((image, index) => {
+    const key = `ps_item_image_${index + 1}`;
+    if (key in row) row[key] = image;
+  });
+  return row;
+}
+
+function initials(value) {
+  return String(value || "P")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("") || "P";
+}
+
+function parseDimensionInput(value) {
+  const numbers = String(value || "").match(/\d+(?:\.\d+)?/g) || [];
+  return {
+    length: numbers[0] || "",
+    width: numbers[1] || "",
+    height: numbers[2] || ""
   };
 }
 
 function buildLocalListingDraft(reason) {
   const category = selectedShopeeCategory();
   const missing = [];
-  if (!category) missing.push({ field: "category", importance: "required", reason: "Select and confirm a Shopee category." });
+  const dimensions = parseDimensionInput(fields.dimensions.value);
+  if (!fields.productName.value) missing.push({ field: "product_name", importance: "required", reason: "Add a product name for the upload template." });
   if (!fields.price.value) missing.push({ field: "price", importance: "required", reason: "Add seller-provided product price." });
-  if (!fields.stock.value) missing.push({ field: "stock", importance: "required", reason: "Add seller-provided available stock." });
+  if (!fields.stock.value) missing.push({ field: "stock", importance: "required", reason: "Add seller-provided available stock for the upload template." });
+  if (!fields.weight.value) missing.push({ field: "weight", importance: "required", reason: "Add product weight for the template logistics column." });
+  if (!dimensions.length) missing.push({ field: "length", importance: "required", reason: "Add product length in the dimensions field." });
+  if (!dimensions.width) missing.push({ field: "width", importance: "required", reason: "Add product width in the dimensions field." });
+  if (!dimensions.height) missing.push({ field: "height", importance: "required", reason: "Add product height in the dimensions field." });
+  if (!category) missing.push({ field: "marketplace_category", importance: "recommended", reason: "Confirm the best marketplace category before upload when available." });
   missing.push({ field: "dimensions", importance: "recommended", reason: "Exact dimensions are not visible from image." });
-  const ready = Boolean(category && fields.price.value && fields.stock.value);
+  const ready = Boolean(fields.productName.value && fields.price.value && fields.stock.value && fields.weight.value && dimensions.length && dimensions.width && dimensions.height);
   return {
     mode: "local",
     product_profile: {
@@ -527,24 +966,26 @@ function buildLocalListingDraft(reason) {
       uncertain_details: [reason]
     },
     listing_draft: {
-      title: { value: `${fields.productName.value} | Shopee Ready`, source: "generated", confidence: "low", needs_user_review: true },
+      title: { value: `${fields.productName.value} | Marketplace Ready`, source: "generated", confidence: "low", needs_user_review: true },
       category: { value: category ? { category_id: category.category_id, category_path: category.display_path } : { category_id: null, category_path: "" }, source: category ? "provided" : "missing", confidence: category ? "high" : "low", needs_user_review: !category },
-      description: { value: `${fields.productName.value} prepared for Shopee listing review. Please confirm price, stock, category, and product details before publishing.`, source: "generated", confidence: "low", needs_user_review: true },
+      description: { value: `${fields.productName.value} prepared for listing review. Please confirm price, stock, category, and product details before publishing.`, source: "generated", confidence: "low", needs_user_review: true },
       highlights: [
-        { value: "Polished Shopee product preview images included", source: "generated", confidence: "medium", needs_user_review: true },
+        { value: "Polished product preview images included", source: "generated", confidence: "medium", needs_user_review: true },
         { value: "Review all generated details before export", source: "generated", confidence: "medium", needs_user_review: true }
       ],
-      keywords: [fields.productName.value, fields.category.value, "Shopee"].filter(Boolean),
-      hashtags: [`#${slugify(fields.productName.value).replaceAll("-", "")}`, "#shopee"].filter((tag) => tag.length > 1),
-      alt_text: { value: `${fields.productName.value} Shopee product preview`, source: "generated", confidence: "low", needs_user_review: true },
+      keywords: [fields.productName.value, fields.category.value, "marketplace"].filter(Boolean),
+      hashtags: [`#${slugify(fields.productName.value).replaceAll("-", "")}`, "#ecommerce"].filter((tag) => tag.length > 1),
+      alt_text: { value: `${fields.productName.value} product preview`, source: "generated", confidence: "low", needs_user_review: true },
       price: { value: fields.price.value, source: fields.price.value ? "provided" : "missing", confidence: fields.price.value ? "high" : "low", needs_user_review: !fields.price.value },
       stock: { value: fields.stock.value, source: fields.stock.value ? "provided" : "missing", confidence: fields.stock.value ? "high" : "low", needs_user_review: !fields.stock.value },
+      weight: { value: fields.weight.value, source: fields.weight.value ? "provided" : "missing", confidence: fields.weight.value ? "high" : "low", needs_user_review: !fields.weight.value },
+      dimensions: { value: dimensions, source: ready ? "provided" : "missing", confidence: "medium", needs_user_review: !ready },
       attributes: {},
       variations: []
     },
     missing_fields: missing,
     readiness: {
-      score: ready ? 75 : 45,
+      score: ready ? 80 : 45,
       status: ready ? "Ready to Export" : "Needs Review",
       suggestions: missing.map((item) => item.reason)
     }
@@ -802,6 +1243,22 @@ function blobToBase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function downloadText(filename, data, type = "text/plain") {
+  const blob = new Blob([data], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeTsv(value) {
+  const text = String(value ?? "");
+  if (!/[\t\n"]/.test(text)) return text;
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 function escapeHtml(value) {

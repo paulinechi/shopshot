@@ -39,6 +39,24 @@ class PythonBackendTest(unittest.TestCase):
         self.assertEqual(payload["metadata"][0]["sceneType"], "home")
         self.assertIn("shopee", payload["metadata"][0]["platformTemplates"])
 
+    def test_build_generation_payload_includes_background_prompt(self):
+        payload = server.build_generation_payload(
+            {
+                "productName": "Glow Ritual Set",
+                "category": "skincare",
+                "backgroundPrompt": "premium bathroom shelf with soft daylight",
+                "count": 1,
+            }
+        )
+
+        self.assertIn("premium bathroom shelf", payload["prompts"][0]["prompt"])
+        self.assertIn("keep the product unchanged", payload["prompts"][0]["prompt"])
+
+    def test_model_selection_accepts_known_options_and_falls_back(self):
+        self.assertEqual(server.image_model({"imageModel": "gpt-image-2"}), "gpt-image-2")
+        self.assertEqual(server.text_model({"textModel": "gpt-5.4-mini"}), "gpt-5.4-mini")
+        self.assertEqual(server.image_model({"imageModel": "not-real"}), server.DEFAULT_IMAGE_MODEL)
+
     def test_create_openai_image_request_uses_latest_model_defaults(self):
         body = server.create_openai_image_request("Make a product scene", "gpt-image-1.5")
 
@@ -55,7 +73,7 @@ class PythonBackendTest(unittest.TestCase):
         self.assertEqual(body["quality"], "medium")
         self.assertIn("preserve the exact uploaded product", body["prompt"])
         self.assertIn("Do not redesign", body["prompt"])
-        self.assertIn("Shopee", body["prompt"])
+        self.assertIn("marketplace", body["prompt"])
 
     def test_multipart_body_uses_image_array_fields_for_multiple_references(self):
         body = server.build_multipart_body(
@@ -118,6 +136,8 @@ class PythonBackendTest(unittest.TestCase):
             "brand": "Glow Co",
             "price": "24.90",
             "stock": "12",
+            "weight": "0.5",
+            "dimensions": "20 x 10 x 5",
             "targetGeo": "SG",
             "imagesCount": 1,
             "categoryConfirmed": True,
@@ -141,12 +161,132 @@ class PythonBackendTest(unittest.TestCase):
         self.assertIn("stock", missing)
         self.assertEqual(draft["readiness"]["status"], "Needs Review")
 
+    def test_generate_listing_draft_uses_xlsx_template_requirements_for_readiness(self):
+        draft = server.generate_listing_draft({
+            "productName": "USB-C Cable",
+            "categoryHint": "electronics",
+            "price": "9.90",
+            "stock": "20",
+            "weight": "0.2",
+            "dimensions": "18 x 7 x 2",
+            "targetGeo": "SG",
+            "imagesCount": 1,
+        })
+
+        required_missing = {item["field"] for item in draft["missing_fields"] if item["importance"] == "required"}
+        self.assertNotIn("category", required_missing)
+        self.assertEqual(draft["readiness"]["status"], "Ready to Export")
+
+    def test_generate_listing_draft_flags_xlsx_logistics_columns(self):
+        draft = server.generate_listing_draft({
+            "productName": "USB-C Cable",
+            "categoryHint": "electronics",
+            "price": "9.90",
+            "stock": "20",
+            "targetGeo": "SG",
+            "imagesCount": 1,
+        })
+
+        required_missing = {item["field"] for item in draft["missing_fields"] if item["importance"] == "required"}
+        self.assertIn("weight", required_missing)
+        self.assertIn("length", required_missing)
+        self.assertEqual(draft["readiness"]["status"], "Needs Review")
+
     def test_suggest_category_uses_existing_category_id_only(self):
         suggestion = server.suggest_category("phone charger electronics", server.default_categories())
 
         self.assertIsNotNone(suggestion)
         self.assertIn("category_id", suggestion["value"])
         self.assertIn("Electronics", suggestion["value"]["category_path"])
+
+    def test_extract_shopee_template_categories_reads_upload_sample(self):
+        categories = server.extract_shopee_template_categories()
+        category_ids = {category["category_id"] for category in categories}
+
+        self.assertIn(120039, category_ids)
+        self.assertTrue(any("Template category 120039" in category["display_path"] for category in categories))
+
+    def test_extract_shopee_template_fields_reads_basic_template(self):
+        fields = server.extract_shopee_template_fields()
+        keys = [field["key"] for field in fields]
+        labels = {field["key"]: field["label"] for field in fields}
+        requirements = {field["key"]: field["requirement"] for field in fields}
+
+        self.assertIn("ps_category", keys)
+        self.assertIn("ps_product_name", keys)
+        self.assertIn("ps_product_description", keys)
+        self.assertIn("ps_price", keys)
+        self.assertIn("ps_stock", keys)
+        self.assertEqual(labels["ps_category"], "Category")
+        self.assertEqual(requirements["ps_product_name"], "Mandatory")
+
+    def test_map_listing_to_template_row_uses_required_shopee_fields(self):
+        row = server.map_listing_to_template_row({
+            "listing": {
+                "product_name": "USB-C Cable | Electronics Accessory | SG Ready",
+                "category_id": 100001,
+                "description": "A durable USB-C cable prepared for listing review.",
+                "price": "9.90",
+                "stock": "20",
+            },
+            "logistics": {
+                "weight": "0.2",
+                "length": "18",
+                "width": "7",
+                "height": "2",
+            },
+            "images": {
+                "main_image": "https://example.com/cover.png",
+                "gallery_images": ["https://example.com/1.png"],
+            },
+        })
+
+        self.assertEqual(row["ps_category"], "100001")
+        self.assertEqual(row["ps_product_name"], "USB-C Cable | Electronics Accessory | SG Ready")
+        self.assertEqual(row["ps_price"], "9.90")
+        self.assertEqual(row["ps_stock"], "20")
+        self.assertEqual(row["ps_weight"], "0.2")
+        self.assertEqual(row["ps_length"], "18")
+        self.assertEqual(row["channel_id.1000"], "On")
+        self.assertEqual(row["ps_item_cover_image"], "https://example.com/cover.png")
+
+    def test_build_shopee_template_xlsx_fills_template_row(self):
+        workbook = server.build_shopee_template_xlsx({
+            "listing": {
+                "product_name": "USB-C Cable | Electronics Accessory | SG Ready",
+                "category_id": 100001,
+                "description": "A durable USB-C cable prepared for listing review.",
+                "price": "9.90",
+                "stock": "20",
+            },
+            "logistics": {
+                "weight": "0.2",
+                "length": "18",
+                "width": "7",
+                "height": "2",
+            },
+            "images": {
+                "main_image": "https://example.com/cover.png",
+                "gallery_images": ["https://example.com/1.png"],
+            },
+        })
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as output:
+            output.write(workbook)
+            output_path = output.name
+
+        try:
+            rows = server.read_xlsx_sheet_rows(output_path, "Template", max_rows=8)
+            template_row = rows[6]
+
+            self.assertEqual(template_row[0], "100001")
+            self.assertEqual(template_row[1], "USB-C Cable | Electronics Accessory | SG Ready")
+            self.assertEqual(template_row[10], "9.90")
+            self.assertEqual(template_row[11], "20")
+            self.assertEqual(template_row[25], "0.2")
+            self.assertEqual(template_row[29], "On")
+        finally:
+            os.unlink(output_path)
 
 
 if __name__ == "__main__":
