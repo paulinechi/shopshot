@@ -435,17 +435,26 @@ def build_scene_plans(input_data):
 def build_scene_prompt(plan):
     geo = plan["geo"]
     return " ".join(
-        [
-            f"Create a square 1200x1200 Shopee product preview image for {plan['productName']}, a {plan['productCategory']}.",
-            "Use the uploaded product photo as the source of truth: preserve the exact uploaded product shape, color, material, label, logo, text, packaging, proportions, and visible details.",
-            "Do not redesign the product, do not invent new packaging, do not change branding, and do not turn it into a different object.",
-            "Only polish listing presentation: cleaner lighting, sharper edges, natural shadows, tidy marketplace composition, and an appropriate subtle background or context.",
-            f"Scene type: {plan['category']} / {plan['sceneType']}. {plan['description']}.",
-            f"Target market: {geo['market']}, {geo['region']}. Use {geo['aesthetic']}.",
-            f"Seasonal and cultural filters: {', '.join(geo['seasonalMarkers'])}; {', '.join(geo['culturalMarkers'])}.",
-            f"Brand tone: {plan['brandTone']}. Audience: {plan['audience']}.",
-            f"Visual direction: Shopee listing hero, product remains the clear subject, realistic lighting, no fake logos, no unreadable text, {geo['colorNotes']}.",
-        ]
+[
+    f"Create a square 1200x1200 product preview image for {plan['productName']}, a {plan['productCategory']}.",
+    "Use the uploaded product photo as the source of truth and primary visual reference.",
+    "Preserve the original product exactly as shown in the uploaded photo: keep the same shape, color, material, label, logo, text, packaging, proportions, and all visible details.",
+    "Do not alter, replace, distort, redraw, redesign, or modify the original product photo.",
+    "Important: do not change the original product photo; only improve the presentation around it.",
+    "Do not invent new packaging, change branding, add fake logos, or turn the product into a different object.",
+    "You may enhance image resolution and improve clarity of fine product details, but only in a faithful way that keeps the original product unchanged.",
+    "Enhance sharpness, texture visibility, edges, and small product details while preserving the true appearance of the uploaded product.",
+    "If the user provides background input, use that background direction.",
+    "If the user does not provide background input, generate a few realistic, high-quality background options relevant to the product's use scenario, category, audience, and brand tone, then choose the most suitable one.",
+    "Apply a realistic, high-quality background that feels natural, polished, and visually supportive of the product.",
+    "Backgrounds should remain subtle, believable, and keep the product as the main focus.",
+    "Only improve the presentation with cleaner lighting, higher apparent resolution, sharper edges, natural shadows, tidy composition, and a realistic premium background that fits the intended scene.",
+    f"Scene type: {plan['category']} / {plan['sceneType']}. {plan['description']}.",
+    f"Target market: {geo['market']}, {geo['region']}. Use {geo['aesthetic']}.",
+    f"Seasonal and cultural filters: {', '.join(geo['seasonalMarkers'])}; {', '.join(geo['culturalMarkers'])}.",
+    f"Brand tone: {plan['brandTone']}. Audience: {plan['audience']}.",
+    f"Visual direction: hero product image, product remains the clear focal point, realistic lighting, clean composition, no fake branding, no unreadable text, and {geo['colorNotes']}.",
+]
     )
 
 
