@@ -539,7 +539,7 @@ async function exportZip() {
   if (!state.scenes.length) return;
   els.exportButton.disabled = true;
   els.exportButton.textContent = "Bundling...";
-  const listingPayload = exportListingPayload();
+  const listingPayload = await exportListingPayloadWithImgur();
   const templateExport = await buildTemplateExport(listingPayload);
   const templateWorkbook = await buildTemplateWorkbook(listingPayload);
 
@@ -613,7 +613,7 @@ async function exportTemplateRow() {
 async function exportTemplateXlsx() {
   els.exportTemplateXlsxButton.disabled = true;
   els.exportTemplateXlsxButton.textContent = "Exporting...";
-  const workbook = await buildTemplateWorkbook(exportListingPayload());
+  const workbook = await buildTemplateWorkbook(await exportListingPayloadWithImgur());
   const url = URL.createObjectURL(workbook);
   const link = document.createElement("a");
   link.href = url;
@@ -753,6 +753,47 @@ function exportListingPayload() {
       "Final manual review in the seller platform may still be required."
     ]
   };
+}
+
+async function exportListingPayloadWithImgur() {
+  const payload = exportListingPayload();
+  const imgurImages = await uploadSceneImagesToImgur();
+  if (!imgurImages.length) return payload;
+
+  return {
+    ...payload,
+    images: {
+      ...payload.images,
+      main_image: imgurImages[0]?.url || payload.images.main_image,
+      gallery_images: state.scenes.slice(1).map((scene, index) => (
+        imgurImages[index + 1]?.url || payload.images.gallery_images[index] || `png/${scene.metadata.fileBaseName}.png`
+      )).filter(Boolean)
+    }
+  };
+}
+
+async function uploadSceneImagesToImgur() {
+  if (!state.scenes.length) return [];
+  try {
+    const images = await Promise.all(state.scenes.slice(0, 9).map(async (scene, index) => ({
+      id: scene.id || scene.metadata.fileBaseName || `scene-${index + 1}`,
+      name: `${scene.metadata.fileBaseName || `scene-${index + 1}`}.png`,
+      mimeType: "image/png",
+      b64: await blobToBase64(scene.pngBlob)
+    })));
+
+    const response = await fetch("/api/upload-imgur", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ images })
+    });
+    if (!response.ok) throw new Error("Imgur upload failed");
+    const payload = await response.json();
+    const byId = new Map((payload.images || []).filter((image) => image.url).map((image) => [image.id, image]));
+    return images.map((image) => byId.get(image.id) || null);
+  } catch {
+    return [];
+  }
 }
 
 function seedCatalogProducts() {

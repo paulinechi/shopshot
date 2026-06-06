@@ -9,6 +9,7 @@ const apiRoutes = [
   "api/remove-background.py",
   "api/generate-scene.py",
   "api/generate-listing-draft.py",
+  "api/upload-imgur.py",
   "api/export-template-xlsx.py",
   "api/map-template-row.py"
 ];

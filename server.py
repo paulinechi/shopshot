@@ -29,6 +29,7 @@ IMAGE_MODEL_OPTIONS = [
 TEXT_MODEL_OPTIONS = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.1"]
 OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations"
 OPENAI_IMAGE_EDITS_URL = "https://api.openai.com/v1/images/edits"
+IMGUR_UPLOAD_URL = "https://api.imgur.com/3/image"
 
 
 GEO_PRESETS = {
@@ -1246,6 +1247,46 @@ def polish_product_preview_openai(prompt, images, api_key, model):
     return b64
 
 
+def upload_imgur_image(image, client_id, opener=request.urlopen):
+    if not client_id:
+        raise RuntimeError("IMGUR_CLIENT_ID is not configured")
+    raw_b64 = image.get("b64") or ""
+    if raw_b64.startswith("data:"):
+        raw_b64 = raw_b64.split(",", 1)[-1]
+    if not raw_b64:
+        raise RuntimeError("Image payload is missing base64 data")
+
+    payload = parse.urlencode(
+        {
+            "image": raw_b64,
+            "type": "base64",
+            "name": image.get("name") or "product-preview.png",
+        }
+    ).encode("utf-8")
+    req = request.Request(
+        IMGUR_UPLOAD_URL,
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": f"Client-ID {client_id}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    )
+    try:
+        with opener(req, timeout=60) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(detail or f"Imgur upload failed with HTTP {exc.code}") from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Imgur upload failed: {exc.reason}") from exc
+
+    link = ((data.get("data") or {}).get("link") or "").strip()
+    if not data.get("success") or not link:
+        raise RuntimeError("Imgur upload response did not include an image link")
+    return link
+
+
 def build_multipart_body(boundary, fields, images):
     chunks = []
     for key, value in fields.items():
@@ -1322,6 +1363,9 @@ class ScenarioRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/generate-listing-draft":
             self.handle_generate_listing_draft()
             return
+        if parsed.path == "/api/upload-imgur":
+            self.handle_upload_imgur()
+            return
         if parsed.path == "/api/map-template-row":
             self.handle_map_template_row()
             return
@@ -1333,6 +1377,7 @@ class ScenarioRequestHandler(BaseHTTPRequestHandler):
             "/api/generate-scene",
             "/api/remove-background",
             "/api/generate-listing-draft",
+            "/api/upload-imgur",
             "/api/map-template-row",
             "/api/export-template-xlsx",
         ):
@@ -1509,6 +1554,51 @@ class ScenarioRequestHandler(BaseHTTPRequestHandler):
             self.send_json(
                 200, {"mode": "fallback", "model": text_model(body), **draft}
             )
+        except json.JSONDecodeError:
+            self.send_json(400, {"error": "Invalid JSON body"})
+
+    def handle_upload_imgur(self):
+        try:
+            body = self.read_json_body(max_size=80_000_000)
+            client_id = os.environ.get("IMGUR_CLIENT_ID", "")
+            if not client_id:
+                self.send_json(
+                    200,
+                    {
+                        "mode": "fallback",
+                        "reason": "IMGUR_CLIENT_ID is not configured",
+                        "images": [],
+                    },
+                )
+                return
+
+            outputs = []
+            for image in (body.get("images") or [])[:9]:
+                try:
+                    outputs.append(
+                        {
+                            "id": image.get("id") or "",
+                            "name": image.get("name") or "product-preview.png",
+                            "source": "imgur",
+                            "url": upload_imgur_image(image, client_id),
+                        }
+                    )
+                except RuntimeError as exc:
+                    outputs.append(
+                        {
+                            "id": image.get("id") or "",
+                            "name": image.get("name") or "product-preview.png",
+                            "source": "fallback",
+                            "error": str(exc),
+                        }
+                    )
+
+            mode = (
+                "imgur"
+                if any(item["source"] == "imgur" for item in outputs)
+                else "fallback"
+            )
+            self.send_json(200, {"mode": mode, "images": outputs})
         except json.JSONDecodeError:
             self.send_json(400, {"error": "Invalid JSON body"})
 

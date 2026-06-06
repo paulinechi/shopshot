@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from io import BytesIO
 
 import server
 
@@ -287,6 +288,38 @@ class PythonBackendTest(unittest.TestCase):
             self.assertEqual(template_row[29], "On")
         finally:
             os.unlink(output_path)
+
+    def test_upload_imgur_image_returns_direct_link(self):
+        requests = []
+
+        class FakeResponse:
+            def __enter__(self):
+                return BytesIO(b'{"success": true, "data": {"link": "https://i.imgur.com/demo.png"}}')
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+        def fake_urlopen(req, timeout=0):
+            requests.append(req)
+            return FakeResponse()
+
+        link = server.upload_imgur_image(
+            {
+                "name": "cover.png",
+                "b64": "abc123",
+                "mimeType": "image/png",
+            },
+            "client-id-123",
+            opener=fake_urlopen,
+        )
+
+        self.assertEqual(link, "https://i.imgur.com/demo.png")
+        self.assertEqual(requests[0].headers["Authorization"], "Client-ID client-id-123")
+        self.assertIn(b"image=abc123", requests[0].data)
+
+    def test_upload_imgur_image_rejects_missing_client_id(self):
+        with self.assertRaises(RuntimeError):
+            server.upload_imgur_image({"name": "cover.png", "b64": "abc123"}, "")
 
 
 if __name__ == "__main__":

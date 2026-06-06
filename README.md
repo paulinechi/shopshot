@@ -38,9 +38,10 @@ http://localhost:3000
 ```text
 OPENAI_API_KEY=your_key_here
 OPENAI_IMAGE_MODEL=gpt-image-1.5
+IMGUR_CLIENT_ID=your_imgur_client_id_here
 ```
 
-`OPENAI_IMAGE_MODEL` is optional. The default is `gpt-image-1.5`.
+`OPENAI_IMAGE_MODEL` is optional. The default is `gpt-image-1.5`. `IMGUR_CLIENT_ID` is optional for local ZIP export, but required when exported Shopee XLSX image columns should contain public Imgur URLs.
 
 ## Deploy on Vercel
 
