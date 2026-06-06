@@ -1,0 +1,7 @@
+.env
+.superpowers/
+node_modules/
+exports/
+# pycache
+**/__pycache__/
+**/.pytest_cache/

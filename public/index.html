@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Geo Product Scenario Generator</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <div class="panel input-panel">
+          <div class="brand-row">
+            <div>
+              <p class="eyebrow">Steps 1-5</p>
+              <h1>Product Scenario Generator</h1>
+            </div>
+            <span id="apiStatus" class="status-pill">Checking API</span>
+          </div>
+
+          <label class="dropzone" for="productImage">
+            <input id="productImage" type="file" accept="image/*" multiple>
+            <span>Upload product photos</span>
+            <small>PNG or JPG. Upload multiple angles; the app isolates each product reference.</small>
+          </label>
+          <div id="uploadStrip" class="upload-strip"></div>
+
+          <div class="form-grid">
+            <label>
+              Product name
+              <input id="productName" value="Glow Ritual Set">
+            </label>
+            <label>
+              Category
+              <input id="category" value="beauty gift set">
+            </label>
+            <label>
+              Brand tone
+              <input id="brandTone" value="premium, warm, trustworthy">
+            </label>
+            <label>
+              Audience
+              <input id="audience" value="urban millennial shoppers">
+            </label>
+            <label>
+              Target geo
+              <select id="targetGeo">
+                <option value="SG">Singapore</option>
+                <option value="PH">Philippines</option>
+                <option value="IN">India</option>
+                <option value="US">United States</option>
+                <option value="SEA">Southeast Asia</option>
+              </select>
+            </label>
+            <label>
+              Variants
+              <input id="count" type="number" min="1" max="10" value="8">
+            </label>
+          </div>
+
+          <div class="mode-row">
+            <label class="radio-card">
+              <input type="radio" name="mode" value="openai" checked>
+              <span>OpenAI + fallback</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="mode" value="local">
+              <span>Local demo only</span>
+            </label>
+          </div>
+
+          <div class="action-row">
+            <button id="generateButton" class="primary-button">Generate scenes</button>
+            <button id="exportButton" class="secondary-button" disabled>Export ZIP</button>
+          </div>
+        </div>
+
+        <div class="preview-stack">
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Step 2</p>
+                <h2>Product isolation</h2>
+              </div>
+              <span class="muted">Canvas preview</span>
+            </div>
+            <canvas id="isolationCanvas" width="900" height="600"></canvas>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Pipeline</p>
+                <h2>Run status</h2>
+              </div>
+            </div>
+            <div class="progress-shell">
+              <div id="progressBar" class="progress-bar"></div>
+            </div>
+            <p id="progressLabel" class="progress-label">Waiting to generate</p>
+            <ol id="pipelineStatus" class="timeline"></ol>
+          </section>
+        </div>
+      </section>
+
+      <section class="results-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Steps 3-5</p>
+            <h2>Scene variations and export bundle</h2>
+          </div>
+          <span id="resultSummary" class="muted">No scenes generated yet</span>
+        </div>
+        <div id="sceneGrid" class="scene-grid"></div>
+      </section>
+
+      <section class="metadata-layout">
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Step 4</p>
+              <h2>Metadata JSON</h2>
+            </div>
+          </div>
+          <pre id="metadataPreview">{}</pre>
+        </div>
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Templates</p>
+              <h2>Marketplace exports</h2>
+            </div>
+          </div>
+          <div class="template-list">
+            <div><strong>Shopee</strong><span>1200x1200 PNG/WebP, gallery-ready JSON fields</span></div>
+            <div><strong>Lazada</strong><span>1200x1200 product gallery images and SEO tags</span></div>
+            <div><strong>TikTok Shop</strong><span>Square assets, alt text, short-form hashtags</span></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

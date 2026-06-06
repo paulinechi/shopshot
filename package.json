@@ -1,0 +1,10 @@
+{
+  "name": "geo-product-scenario-generator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 server.py",
+    "test": "node --test && python3 -m unittest discover -s tests -p '*_py_test.py'"
+  }
+}
