@@ -1,0 +1,50 @@
+[
+  {
+    "category_id": 100000,
+    "parent_category_id": 0,
+    "original_category_name": "Electronics & Gadgets",
+    "has_children": true
+  },
+  {
+    "category_id": 100001,
+    "parent_category_id": 100000,
+    "original_category_name": "Mobile Accessories",
+    "has_children": false
+  },
+  {
+    "category_id": 100002,
+    "parent_category_id": 100000,
+    "original_category_name": "Computer Accessories",
+    "has_children": false
+  },
+  {
+    "category_id": 100003,
+    "parent_category_id": 100000,
+    "original_category_name": "Audio & Wearables",
+    "has_children": false
+  },
+  {
+    "category_id": 200000,
+    "parent_category_id": 0,
+    "original_category_name": "Health & Beauty",
+    "has_children": true
+  },
+  {
+    "category_id": 200001,
+    "parent_category_id": 200000,
+    "original_category_name": "Skincare",
+    "has_children": false
+  },
+  {
+    "category_id": 200002,
+    "parent_category_id": 200000,
+    "original_category_name": "Makeup",
+    "has_children": false
+  },
+  {
+    "category_id": 200003,
+    "parent_category_id": 200000,
+    "original_category_name": "Personal Care",
+    "has_children": false
+  }
+]

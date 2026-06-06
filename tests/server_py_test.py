@@ -99,6 +99,55 @@ class PythonBackendTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             server.normalize_uploaded_image({"name": "notes.txt", "mimeType": "text/plain", "b64": "abc"})
 
+    def test_build_category_paths_reconstructs_shopee_tree(self):
+        categories = server.build_category_paths([
+            {"category_id": 10, "parent_category_id": 0, "original_category_name": "Health & Beauty", "has_children": True},
+            {"category_id": 11, "parent_category_id": 10, "original_category_name": "Skincare", "has_children": False},
+            {"category_id": 20, "parent_category_id": 0, "original_category_name": "Electronics & Gadgets", "has_children": True},
+            {"category_id": 21, "parent_category_id": 20, "original_category_name": "Mobile Accessories", "has_children": False},
+        ])
+
+        self.assertEqual(categories[11]["display_path"], "Health & Beauty > Skincare")
+        self.assertEqual(categories[21]["display_path"], "Electronics & Gadgets > Mobile Accessories")
+        self.assertFalse(categories[11]["has_children"])
+
+    def test_generate_listing_draft_requires_price_stock_and_omits_sku(self):
+        draft = server.generate_listing_draft({
+            "productName": "Glow Ritual Set",
+            "categoryHint": "skincare",
+            "brand": "Glow Co",
+            "price": "24.90",
+            "stock": "12",
+            "targetGeo": "SG",
+            "imagesCount": 1,
+            "categoryConfirmed": True,
+        })
+
+        self.assertEqual(draft["listing_draft"]["price"]["value"], "24.90")
+        self.assertEqual(draft["listing_draft"]["stock"]["value"], "12")
+        self.assertNotIn("sku", draft["listing_draft"])
+        self.assertNotIn("sku", draft["missing_fields"])
+        self.assertGreaterEqual(draft["readiness"]["score"], 70)
+
+    def test_generate_listing_draft_flags_missing_required_price_and_stock(self):
+        draft = server.generate_listing_draft({
+            "productName": "USB-C Cable",
+            "categoryHint": "electronics",
+            "targetGeo": "SG",
+        })
+
+        missing = {item["field"] for item in draft["missing_fields"]}
+        self.assertIn("price", missing)
+        self.assertIn("stock", missing)
+        self.assertEqual(draft["readiness"]["status"], "Needs Review")
+
+    def test_suggest_category_uses_existing_category_id_only(self):
+        suggestion = server.suggest_category("phone charger electronics", server.default_categories())
+
+        self.assertIsNotNone(suggestion)
+        self.assertIn("category_id", suggestion["value"])
+        self.assertIn("Electronics", suggestion["value"]["category_path"])
+
 
 if __name__ == "__main__":
     unittest.main()

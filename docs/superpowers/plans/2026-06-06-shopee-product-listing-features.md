@@ -187,7 +187,6 @@ This model is important because the PRD repeatedly says the AI must separate det
    - target market
    - price, required for Ready to Export
    - stock, required for Ready to Export
-   - stock
 6. User clicks `Generate Shopee Listing Draft`.
 7. Backend analyzes uploaded images and seller inputs.
 8. App displays generation progress:
@@ -620,6 +619,13 @@ For the next coding pass, implement this narrow slice first:
 5. Update JSON export to include listing fields and warnings.
 
 Leave Shopee API publishing, CSV export, SKU support, and catalog/dashboard features out of this pass.
+
+Implementation status:
+
+- Category sample data, category path reconstruction, and `/api/categories` are implemented.
+- Python `/api/generate-listing-draft` deterministic fallback is implemented.
+- Same-page listing draft UI, readiness checklist, and product listing JSON export are implemented.
+- CSV, SKU, catalog/dashboard, and Shopee API publishing remain out of scope.
 
 ---
 

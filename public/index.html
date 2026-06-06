@@ -35,12 +35,42 @@
               <input id="category" value="beauty gift set">
             </label>
             <label>
+              Shopee category
+              <select id="shopeeCategory">
+                <option value="">AI suggest or select</option>
+              </select>
+            </label>
+            <label>
               Brand tone
               <input id="brandTone" value="premium, warm, trustworthy">
             </label>
             <label>
               Audience
               <input id="audience" value="urban millennial shoppers">
+            </label>
+            <label>
+              Product note
+              <input id="productNote" placeholder="e.g. waterproof, 20L, sensitive skin">
+            </label>
+            <label>
+              Brand
+              <input id="brand" placeholder="Seller-provided brand">
+            </label>
+            <label>
+              Price
+              <input id="price" type="number" min="0" step="0.01" placeholder="Required">
+            </label>
+            <label>
+              Stock
+              <input id="stock" type="number" min="0" step="1" placeholder="Required">
+            </label>
+            <label>
+              Weight
+              <input id="weight" placeholder="Optional, e.g. 0.5 kg">
+            </label>
+            <label>
+              Dimensions
+              <input id="dimensions" placeholder="Optional, e.g. 20 x 10 x 5 cm">
             </label>
             <label>
               Target geo
@@ -112,6 +142,67 @@
           <span id="resultSummary" class="muted">No previews polished yet</span>
         </div>
         <div id="sceneGrid" class="scene-grid"></div>
+      </section>
+
+      <section class="listing-layout">
+        <div class="panel listing-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Listing</p>
+              <h2>Shopee listing draft</h2>
+            </div>
+            <span id="readinessPill" class="status-pill warn">Needs draft</span>
+          </div>
+
+          <div class="listing-grid">
+            <label>
+              Shopee title
+              <input id="listingTitle" placeholder="Generated after polishing previews">
+            </label>
+            <label>
+              Confirmed category
+              <input id="listingCategory" readonly placeholder="Category ID and path">
+            </label>
+            <label class="wide-field">
+              Product description
+              <textarea id="listingDescription" rows="5" placeholder="Generated Shopee description"></textarea>
+            </label>
+            <label class="wide-field">
+              Highlights
+              <textarea id="listingHighlights" rows="4" placeholder="Generated product highlights"></textarea>
+            </label>
+            <label>
+              Price
+              <input id="listingPrice" type="number" min="0" step="0.01">
+            </label>
+            <label>
+              Stock
+              <input id="listingStock" type="number" min="0" step="1">
+            </label>
+          </div>
+        </div>
+
+        <div class="panel readiness-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Readiness</p>
+              <h2>Export checks</h2>
+            </div>
+            <strong id="readinessScore">0/100</strong>
+          </div>
+          <div class="readiness-meter">
+            <div id="readinessFill"></div>
+          </div>
+          <div id="missingFields" class="missing-list"></div>
+          <div class="tag-block">
+            <h3>SEO keywords</h3>
+            <div id="listingKeywords" class="tag-list"></div>
+          </div>
+          <div class="tag-block">
+            <h3>Hashtags</h3>
+            <div id="listingHashtags" class="tag-list"></div>
+          </div>
+        </div>
       </section>
 
       <section class="metadata-layout">

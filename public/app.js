@@ -10,7 +10,9 @@ const state = {
   productImages: [],
   isolatedImages: [],
   scenes: [],
-  metadata: []
+  metadata: [],
+  categories: [],
+  listingDraft: null
 };
 
 const els = {
@@ -25,10 +27,36 @@ const els = {
   progressLabel: document.querySelector("#progressLabel"),
   sceneGrid: document.querySelector("#sceneGrid"),
   metadataPreview: document.querySelector("#metadataPreview"),
-  resultSummary: document.querySelector("#resultSummary")
+  resultSummary: document.querySelector("#resultSummary"),
+  readinessPill: document.querySelector("#readinessPill"),
+  readinessScore: document.querySelector("#readinessScore"),
+  readinessFill: document.querySelector("#readinessFill"),
+  missingFields: document.querySelector("#missingFields"),
+  listingKeywords: document.querySelector("#listingKeywords"),
+  listingHashtags: document.querySelector("#listingHashtags")
 };
 
-const fields = ["productName", "category", "brandTone", "audience", "targetGeo", "count"]
+const fields = [
+  "productName",
+  "category",
+  "shopeeCategory",
+  "brandTone",
+  "audience",
+  "productNote",
+  "brand",
+  "price",
+  "stock",
+  "weight",
+  "dimensions",
+  "targetGeo",
+  "count",
+  "listingTitle",
+  "listingCategory",
+  "listingDescription",
+  "listingHighlights",
+  "listingPrice",
+  "listingStock"
+]
   .reduce((items, id) => ({ ...items, [id]: document.querySelector(`#${id}`) }), {});
 
 const PIPELINE_STEPS = [
@@ -45,6 +73,7 @@ async function init() {
   renderPipelineStatus(0);
   drawIsolationPlaceholder();
   await refreshApiStatus();
+  await loadCategories();
   els.productImage.addEventListener("change", handleImageUpload);
   els.generateButton.addEventListener("click", generateScenes);
   els.exportButton.addEventListener("click", exportZip);
@@ -59,6 +88,24 @@ async function refreshApiStatus() {
   } catch {
     els.apiStatus.textContent = "Offline fallback";
     els.apiStatus.classList.add("warn");
+  }
+}
+
+async function loadCategories() {
+  try {
+    const response = await fetch("/api/categories");
+    const payload = await response.json();
+    state.categories = payload.categories || [];
+    fields.shopeeCategory.innerHTML = `<option value="">AI suggest or select</option>`;
+    for (const category of state.categories) {
+      if (category.has_children) continue;
+      const option = document.createElement("option");
+      option.value = String(category.category_id);
+      option.textContent = category.display_path;
+      fields.shopeeCategory.append(option);
+    }
+  } catch {
+    state.categories = [];
   }
 }
 
@@ -135,12 +182,38 @@ async function generateScenes() {
     setProgress(index + 1, localPayload.plans.length, `Polished ${index + 1} of ${localPayload.plans.length} previews`);
   }
 
+  await generateListingDraft(productImages);
   renderMetadata();
   renderPipelineStatus(5);
   els.resultSummary.textContent = `${state.scenes.length} Shopee previews ready`;
   els.exportButton.disabled = false;
   els.generateButton.disabled = false;
   els.generateButton.textContent = "Polish previews";
+}
+
+async function generateListingDraft(productImages) {
+  setProgress(0, 1, "Drafting Shopee listing...");
+  try {
+    const selectedCategory = selectedShopeeCategory();
+    const response = await fetch("/api/generate-listing-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...getInput(),
+        productImages,
+        imagesCount: state.productImages.length,
+        categoryId: selectedCategory?.category_id || null,
+        categoryPath: selectedCategory?.display_path || "",
+        categoryConfirmed: Boolean(selectedCategory),
+        confirmedFields: selectedCategory ? ["category"] : []
+      })
+    });
+    state.listingDraft = await response.json();
+  } catch (error) {
+    state.listingDraft = buildLocalListingDraft(error.message);
+  }
+  renderListingDraft();
+  setProgress(1, 1, "Shopee listing draft ready");
 }
 
 async function buildSceneOutputs(payload, input) {
@@ -264,8 +337,57 @@ function renderMetadata() {
   els.metadataPreview.textContent = JSON.stringify({
     generatedAt: new Date().toISOString(),
     imageCount: state.metadata.length,
+    listing: exportListingPayload(),
     images: state.metadata
   }, null, 2);
+}
+
+function renderListingDraft() {
+  const draft = state.listingDraft;
+  if (!draft?.listing_draft) return;
+
+  const listing = draft.listing_draft;
+  const categoryValue = listing.category?.value || {};
+  fields.listingTitle.value = listing.title?.value || "";
+  fields.listingCategory.value = categoryValue.category_id
+    ? `${categoryValue.category_id} · ${categoryValue.category_path}`
+    : "Missing Shopee category";
+  fields.listingDescription.value = listing.description?.value || "";
+  fields.listingHighlights.value = (listing.highlights || []).map((item) => item.value).join("\n");
+  fields.listingPrice.value = listing.price?.value || fields.price.value || "";
+  fields.listingStock.value = listing.stock?.value || fields.stock.value || "";
+
+  const readiness = draft.readiness || { score: 0, status: "Needs Review" };
+  els.readinessScore.textContent = `${readiness.score || 0}/100`;
+  els.readinessFill.style.width = `${readiness.score || 0}%`;
+  els.readinessPill.textContent = readiness.status || "Needs Review";
+  els.readinessPill.classList.toggle("warn", readiness.status !== "Ready to Export");
+  renderTags(els.listingKeywords, listing.keywords || []);
+  renderTags(els.listingHashtags, listing.hashtags || []);
+  renderMissingFields(draft.missing_fields || []);
+}
+
+function renderMissingFields(items) {
+  els.missingFields.innerHTML = "";
+  if (!items.length) {
+    els.missingFields.innerHTML = `<div class="missing-item"><b>No blocking missing fields</b><span>Review the draft before export.</span></div>`;
+    return;
+  }
+  for (const item of items) {
+    const node = document.createElement("div");
+    node.className = "missing-item";
+    node.innerHTML = `<b>${escapeHtml(item.field)} · ${escapeHtml(item.importance)}</b><span>${escapeHtml(item.reason)}</span>`;
+    els.missingFields.append(node);
+  }
+}
+
+function renderTags(container, tags) {
+  container.innerHTML = "";
+  for (const tag of tags) {
+    const node = document.createElement("span");
+    node.textContent = tag;
+    container.append(node);
+  }
 }
 
 async function exportZip() {
@@ -278,8 +400,13 @@ async function exportZip() {
       name: "metadata.json",
       data: JSON.stringify({
         generatedAt: new Date().toISOString(),
+        listing: exportListingPayload(),
         images: state.metadata
       }, null, 2)
+    },
+    {
+      name: "product_listing.json",
+      data: JSON.stringify(exportListingPayload(), null, 2)
     }
   ];
 
@@ -315,13 +442,112 @@ async function exportZip() {
 }
 
 function getInput() {
+  const category = selectedShopeeCategory();
   return {
     productName: fields.productName.value,
     category: fields.category.value,
+    productNote: fields.productNote.value,
+    categoryHint: fields.category.value,
+    categoryId: category?.category_id || null,
+    categoryPath: category?.display_path || "",
+    categoryConfirmed: Boolean(category),
     brandTone: fields.brandTone.value,
+    brand: fields.brand.value,
     audience: fields.audience.value,
+    price: fields.price.value,
+    stock: fields.stock.value,
+    weight: fields.weight.value,
+    dimensions: fields.dimensions.value,
     targetGeo: fields.targetGeo.value,
     count: Number(fields.count.value) || 8
+  };
+}
+
+function selectedShopeeCategory() {
+  const selectedId = Number(fields.shopeeCategory.value);
+  if (!selectedId) return null;
+  return state.categories.find((category) => category.category_id === selectedId) || null;
+}
+
+function exportListingPayload() {
+  const listing = state.listingDraft?.listing_draft || {};
+  const readiness = state.listingDraft?.readiness || { score: 0, status: "Needs Review", suggestions: [] };
+  const category = listing.category?.value || selectedShopeeCategory() || {};
+  const missing = state.listingDraft?.missing_fields || [];
+  return {
+    exported_at: new Date().toISOString(),
+    platform: "Shopee",
+    target_market: fields.targetGeo.value,
+    ready_for_shopee: readiness.status === "Ready to Export",
+    readiness: {
+      score: readiness.score || 0,
+      status: readiness.status || "Needs Review",
+      missing_required_fields: missing.filter((item) => item.importance === "required").map((item) => item.field),
+      missing_recommended_fields: missing.filter((item) => item.importance === "recommended").map((item) => item.field)
+    },
+    listing: {
+      product_name: fields.listingTitle.value || listing.title?.value || fields.productName.value,
+      category_id: category.category_id || null,
+      category_path: category.category_path || category.display_path || "",
+      category_confirmed: Boolean(selectedShopeeCategory()),
+      description: fields.listingDescription.value || listing.description?.value || "",
+      brand: fields.brand.value,
+      price: fields.listingPrice.value || fields.price.value,
+      stock: fields.listingStock.value || fields.stock.value,
+      attributes: listing.attributes || {},
+      variations: listing.variations || []
+    },
+    images: {
+      main_image: state.scenes[0]?.metadata?.fileBaseName ? `png/${state.scenes[0].metadata.fileBaseName}.png` : "",
+      gallery_images: state.scenes.slice(1).map((scene) => `png/${scene.metadata.fileBaseName}.png`),
+      alt_text: listing.alt_text?.value || state.metadata[0]?.altText || ""
+    },
+    seo: {
+      keywords: listing.keywords || [],
+      hashtags: listing.hashtags || []
+    },
+    warnings: [
+      "Final manual review in Shopee Seller Centre may still be required."
+    ]
+  };
+}
+
+function buildLocalListingDraft(reason) {
+  const category = selectedShopeeCategory();
+  const missing = [];
+  if (!category) missing.push({ field: "category", importance: "required", reason: "Select and confirm a Shopee category." });
+  if (!fields.price.value) missing.push({ field: "price", importance: "required", reason: "Add seller-provided product price." });
+  if (!fields.stock.value) missing.push({ field: "stock", importance: "required", reason: "Add seller-provided available stock." });
+  missing.push({ field: "dimensions", importance: "recommended", reason: "Exact dimensions are not visible from image." });
+  const ready = Boolean(category && fields.price.value && fields.stock.value);
+  return {
+    mode: "local",
+    product_profile: {
+      detected_product_type: { value: fields.category.value || fields.productName.value, source: "inferred", confidence: "low", needs_user_review: true },
+      uncertain_details: [reason]
+    },
+    listing_draft: {
+      title: { value: `${fields.productName.value} | Shopee Ready`, source: "generated", confidence: "low", needs_user_review: true },
+      category: { value: category ? { category_id: category.category_id, category_path: category.display_path } : { category_id: null, category_path: "" }, source: category ? "provided" : "missing", confidence: category ? "high" : "low", needs_user_review: !category },
+      description: { value: `${fields.productName.value} prepared for Shopee listing review. Please confirm price, stock, category, and product details before publishing.`, source: "generated", confidence: "low", needs_user_review: true },
+      highlights: [
+        { value: "Polished Shopee product preview images included", source: "generated", confidence: "medium", needs_user_review: true },
+        { value: "Review all generated details before export", source: "generated", confidence: "medium", needs_user_review: true }
+      ],
+      keywords: [fields.productName.value, fields.category.value, "Shopee"].filter(Boolean),
+      hashtags: [`#${slugify(fields.productName.value).replaceAll("-", "")}`, "#shopee"].filter((tag) => tag.length > 1),
+      alt_text: { value: `${fields.productName.value} Shopee product preview`, source: "generated", confidence: "low", needs_user_review: true },
+      price: { value: fields.price.value, source: fields.price.value ? "provided" : "missing", confidence: fields.price.value ? "high" : "low", needs_user_review: !fields.price.value },
+      stock: { value: fields.stock.value, source: fields.stock.value ? "provided" : "missing", confidence: fields.stock.value ? "high" : "low", needs_user_review: !fields.stock.value },
+      attributes: {},
+      variations: []
+    },
+    missing_fields: missing,
+    readiness: {
+      score: ready ? 75 : 45,
+      status: ready ? "Ready to Export" : "Needs Review",
+      suggestions: missing.map((item) => item.reason)
+    }
   };
 }
 

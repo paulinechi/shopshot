@@ -13,6 +13,7 @@ import uuid
 ROOT = Path(__file__).resolve().parent
 PUBLIC_DIR = ROOT / "public"
 SRC_DIR = ROOT / "src"
+CATEGORY_SAMPLE_PATH = ROOT / "data" / "shopee_categories.sample.json"
 DEFAULT_IMAGE_MODEL = "gpt-image-1.5"
 OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations"
 OPENAI_IMAGE_EDITS_URL = "https://api.openai.com/v1/images/edits"
@@ -110,6 +111,291 @@ def slugify(value):
 
 def get_geo_preset(target_geo="SEA"):
     return GEO_PRESETS.get(str(target_geo).strip().upper(), GEO_PRESETS["SEA"])
+
+
+def default_categories():
+    if CATEGORY_SAMPLE_PATH.exists():
+        records = json.loads(CATEGORY_SAMPLE_PATH.read_text(encoding="utf-8"))
+    else:
+        records = [
+            {"category_id": 100000, "parent_category_id": 0, "original_category_name": "Electronics & Gadgets", "has_children": True},
+            {"category_id": 100001, "parent_category_id": 100000, "original_category_name": "Mobile Accessories", "has_children": False},
+            {"category_id": 200000, "parent_category_id": 0, "original_category_name": "Health & Beauty", "has_children": True},
+            {"category_id": 200001, "parent_category_id": 200000, "original_category_name": "Skincare", "has_children": False},
+        ]
+    return build_category_paths(records)
+
+
+def build_category_paths(records):
+    categories = {}
+    for record in records:
+        category_id = int(record["category_id"])
+        categories[category_id] = {
+            "category_id": category_id,
+            "parent_category_id": int(record.get("parent_category_id") or 0),
+            "original_category_name": record.get("original_category_name") or record.get("category_name") or "Unnamed",
+            "has_children": bool(record.get("has_children")),
+        }
+
+    def display_path(category_id):
+        record = categories[category_id]
+        parent_id = record["parent_category_id"]
+        if parent_id and parent_id in categories:
+            return f"{display_path(parent_id)} > {record['original_category_name']}"
+        return record["original_category_name"]
+
+    for category_id in categories:
+        categories[category_id]["display_path"] = display_path(category_id)
+    return categories
+
+
+def public_categories():
+    return sorted(default_categories().values(), key=lambda item: item["display_path"])
+
+
+def suggest_category(text, categories=None):
+    categories = categories or default_categories()
+    query = clean(text).lower()
+    if not query:
+        return None
+
+    keyword_map = [
+        (("skincare", "beauty", "cosmetic", "makeup", "serum", "cream", "cleanser", "health"), "Health & Beauty"),
+        (("phone", "charger", "cable", "usb", "electronic", "gadget", "earbud", "audio", "computer"), "Electronics & Gadgets"),
+    ]
+
+    preferred_root = None
+    for keywords, root in keyword_map:
+        if any(keyword in query for keyword in keywords):
+            preferred_root = root
+            break
+
+    candidates = [item for item in categories.values() if not item["has_children"]]
+    if preferred_root:
+        candidates = [item for item in candidates if item["display_path"].startswith(preferred_root)] or candidates
+
+    scored = []
+    tokens = set(re.findall(r"[a-z0-9]+", query))
+    for item in candidates:
+        path = item["display_path"].lower()
+        score = sum(1 for token in tokens if token in path)
+        if preferred_root and item["display_path"].startswith(preferred_root):
+            score += 3
+        if any(token in query for token in ["phone", "charger", "cable", "usb"]) and "mobile accessories" in path:
+            score += 4
+        if any(token in query for token in ["serum", "cream", "cleanser", "skincare"]) and "skincare" in path:
+            score += 4
+        scored.append((score, item))
+
+    scored.sort(key=lambda pair: (-pair[0], pair[1]["display_path"]))
+    if not scored or scored[0][0] <= 0:
+        return None
+    item = scored[0][1]
+    return {
+        "value": {
+            "category_id": item["category_id"],
+            "category_path": item["display_path"],
+        },
+        "source": "inferred",
+        "confidence": "medium" if scored[0][0] >= 3 else "low",
+        "needs_user_review": True,
+    }
+
+
+def field(value, source="generated", confidence="medium", needs_user_review=True):
+    return {
+        "value": value,
+        "source": source,
+        "confidence": confidence,
+        "needs_user_review": needs_user_review,
+    }
+
+
+def generate_listing_draft(input_data):
+    product_name = clean(input_data.get("productName") or input_data.get("product_name") or "Your Product")
+    product_note = clean(input_data.get("productNote") or input_data.get("product_note") or "")
+    category_hint = clean(input_data.get("categoryHint") or input_data.get("category") or "")
+    brand = clean(input_data.get("brand") or "")
+    price = clean(input_data.get("price") or "")
+    stock = clean(input_data.get("stock") or "")
+    target_geo = clean(input_data.get("targetGeo") or "SG")
+    category_text = " ".join([product_name, product_note, category_hint])
+    selected_category_id = input_data.get("categoryId") or input_data.get("category_id")
+    selected_category = default_categories().get(int(selected_category_id)) if selected_category_id else None
+    if selected_category:
+        category_suggestion = {
+            "value": {
+                "category_id": selected_category["category_id"],
+                "category_path": selected_category["display_path"],
+            },
+            "source": "provided",
+            "confidence": "high",
+            "needs_user_review": False,
+        }
+    else:
+        category_suggestion = suggest_category(category_text)
+    category_value = category_suggestion["value"] if category_suggestion else {"category_id": None, "category_path": ""}
+    product_type = infer_product_type(product_name, product_note, category_hint, category_value.get("category_path", ""))
+    keywords = build_keywords(product_name, product_type, target_geo, category_value.get("category_path", ""))
+    highlights = build_highlights(product_name, product_note, category_value.get("category_path", ""))
+    description = build_description(product_name, highlights, brand)
+    title = build_listing_title(product_name, product_type, target_geo)
+    missing_fields = detect_missing_fields({
+        "productName": product_name,
+        "category_id": category_value.get("category_id"),
+        "price": price,
+        "stock": stock,
+        "description": description,
+    })
+    readiness = calculate_readiness({
+        "productName": product_name,
+        "category_id": category_value.get("category_id"),
+        "category_confirmed": bool(input_data.get("categoryConfirmed")),
+        "price": price,
+        "stock": stock,
+        "description": description,
+        "images_count": int(input_data.get("imagesCount") or len(input_data.get("productImages") or [])),
+        "confirmed_fields": input_data.get("confirmedFields") or [],
+        "missing_fields": missing_fields,
+    })
+
+    return {
+        "product_profile": {
+            "detected_product_type": field(product_type, "inferred", "medium", True),
+            "suggested_category": category_suggestion or field({"category_id": None, "category_path": ""}, "missing", "low", True),
+            "visible_attributes": infer_visible_attributes(category_text),
+            "provided_by_user": {
+                "product_note": product_note,
+                "brand": brand,
+                "price": price,
+                "stock": stock,
+            },
+            "uncertain_details": ["material", "exact dimensions", "weight", "warranty"],
+        },
+        "listing_draft": {
+            "title": field(title, "generated", "medium", True),
+            "category": category_suggestion or field({"category_id": None, "category_path": ""}, "missing", "low", True),
+            "description": field(description, "generated", "medium", True),
+            "highlights": [field(item, "generated", "medium", True) for item in highlights],
+            "keywords": keywords,
+            "hashtags": [f"#{slugify(keyword).replace('-', '')}" for keyword in keywords[:6]],
+            "alt_text": field(f"{product_name} shown as a polished Shopee product preview.", "generated", "medium", True),
+            "brand": field(brand, "provided" if brand else "missing", "high" if brand else "low", not bool(brand)),
+            "price": field(price, "provided" if price else "missing", "high" if price else "low", not bool(price)),
+            "stock": field(stock, "provided" if stock else "missing", "high" if stock else "low", not bool(stock)),
+            "attributes": infer_attributes(category_text, category_value.get("category_path", "")),
+            "variations": [],
+        },
+        "missing_fields": missing_fields,
+        "category_suggestions": [category_suggestion] if category_suggestion else [],
+        "readiness": readiness,
+    }
+
+
+def infer_product_type(product_name, product_note, category_hint, category_path):
+    text = " ".join([product_name, product_note, category_hint, category_path]).lower()
+    if any(token in text for token in ["serum", "skincare", "cream", "cleanser", "makeup", "beauty"]):
+        return "Health & Beauty Product"
+    if any(token in text for token in ["charger", "cable", "usb", "phone", "earbud", "gadget", "electronic"]):
+        return "Electronics Accessory"
+    return product_name.split()[0] if product_name else "Product"
+
+
+def build_listing_title(product_name, product_type, target_geo):
+    suffix = "SG Ready" if target_geo == "SG" else "Shopee Ready"
+    return f"{product_name} | {product_type} | {suffix}"
+
+
+def build_highlights(product_name, product_note, category_path):
+    highlights = [f"Polished Shopee-ready listing for {product_name}"]
+    if product_note:
+        highlights.append(f"Seller-provided note: {product_note}")
+    if category_path:
+        highlights.append(f"Suggested category: {category_path}")
+    highlights.append("Review all generated details before export")
+    return highlights[:5]
+
+
+def build_description(product_name, highlights, brand):
+    brand_line = f" from {brand}" if brand else ""
+    bullet_text = "\n".join(f"- {item}" for item in highlights)
+    return f"{product_name}{brand_line} prepared for Shopee listing review.\n\nHighlights:\n{bullet_text}\n\nPlease confirm price, stock, category, and product details before publishing."
+
+
+def build_keywords(product_name, product_type, target_geo, category_path):
+    values = [product_name, product_type, "Shopee", target_geo]
+    values.extend(category_path.split(" > ") if category_path else [])
+    return [slugify(value).replace("-", " ") for value in unique(values) if slugify(value)][:10]
+
+
+def infer_visible_attributes(text):
+    lower = text.lower()
+    attributes = []
+    for color in ["black", "white", "blue", "pink", "green", "silver"]:
+        if color in lower:
+            attributes.append({"name": "color", **field(color.title(), "detected", "medium", True)})
+            break
+    return attributes
+
+
+def infer_attributes(text, category_path):
+    attributes = {}
+    if category_path:
+        attributes["category_family"] = field(category_path.split(" > ")[0], "inferred", "medium", True)
+    for attr in infer_visible_attributes(text):
+        attributes[attr["name"]] = {key: value for key, value in attr.items() if key != "name"}
+    return attributes
+
+
+def detect_missing_fields(values):
+    missing = []
+    required = {
+        "category_id": "Select and confirm a Shopee category.",
+        "price": "Add seller-provided product price.",
+        "stock": "Add seller-provided available stock.",
+    }
+    for key, reason in required.items():
+        if not values.get(key):
+            missing.append({"field": key.replace("_id", ""), "importance": "required", "reason": reason})
+    recommended = {
+        "dimensions": "Exact dimensions are not visible from image.",
+        "material": "Material should be confirmed by seller.",
+        "weight": "Weight is useful for Shopee logistics.",
+        "warranty": "Warranty should only be added if seller provides it.",
+    }
+    for key, reason in recommended.items():
+        missing.append({"field": key, "importance": "recommended", "reason": reason})
+    return missing
+
+
+def calculate_readiness(values):
+    score = 0
+    if values.get("productName"):
+        score += 15
+    if values.get("description") and len(values["description"]) >= 80:
+        score += 20
+    if values.get("images_count", 0) > 0:
+        score += 15
+    if values.get("category_id"):
+        score += 12
+    if values.get("category_confirmed"):
+        score += 8
+    if values.get("price") and values.get("stock"):
+        score += 10
+    elif values.get("price") or values.get("stock"):
+        score += 5
+    confirmed = len(values.get("confirmed_fields") or [])
+    score += min(10, confirmed * 2)
+    if values.get("price") and values.get("stock") and values.get("category_id") and score >= 75:
+        status = "Ready to Export" if values.get("category_confirmed") else "Needs Review"
+    else:
+        status = "Needs Review"
+    suggestions = [item["reason"] for item in values.get("missing_fields", [])[:5]]
+    return {
+        "score": min(100, score),
+        "status": status,
+        "suggestions": suggestions,
+    }
 
 
 def build_scene_plans(input_data):
@@ -420,6 +706,9 @@ class ScenarioRequestHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if parsed.path == "/api/categories":
+            self.send_json(200, {"categories": public_categories()})
+            return
         self.serve_static(parsed.path)
 
     def do_HEAD(self):
@@ -442,7 +731,10 @@ class ScenarioRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/remove-background":
             self.handle_remove_background()
             return
-        if parsed.path not in ("/api/generate-scenes", "/api/generate-scene", "/api/remove-background"):
+        if parsed.path == "/api/generate-listing-draft":
+            self.handle_generate_listing_draft()
+            return
+        if parsed.path not in ("/api/generate-scenes", "/api/generate-scene", "/api/remove-background", "/api/generate-listing-draft"):
             self.send_json(404, {"error": "Not found"})
             return
 
@@ -534,6 +826,14 @@ class ScenarioRequestHandler(BaseHTTPRequestHandler):
 
             mode = "openai" if any(item["source"] == "openai" for item in outputs) else "fallback"
             self.send_json(200, {"mode": mode, "model": image_model(), "images": outputs})
+        except json.JSONDecodeError:
+            self.send_json(400, {"error": "Invalid JSON body"})
+
+    def handle_generate_listing_draft(self):
+        try:
+            body = self.read_json_body(max_size=80_000_000)
+            draft = generate_listing_draft(body)
+            self.send_json(200, {"mode": "fallback", **draft})
         except json.JSONDecodeError:
             self.send_json(400, {"error": "Invalid JSON body"})
 
