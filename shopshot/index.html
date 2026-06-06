@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShopShot Catalog</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="brand">
+            <div class="brand-badge">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 2.75l1.91 5.34 5.34 1.91-5.34 1.91L12 17.25l-1.91-5.34-5.34-1.91 5.34-1.91L12 2.75z"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+            <div>
+              <p class="brand-title">ShopShot</p>
+              <p class="brand-caption">RKLES AI COPILOT</p>
+            </div>
+          </div>
+
+          <nav class="nav-list" aria-label="Primary">
+            <button class="nav-link" data-screen="create" type="button">
+              <span class="nav-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span>Create Listing</span>
+            </button>
+
+            <button class="nav-link is-active" data-screen="catalog" type="button">
+              <span class="nav-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 5h14v14H5zM5 10h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <span>Catalog</span>
+            </button>
+
+            <button class="nav-link" data-screen="settings" type="button">
+              <span class="nav-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 8.4a3.6 3.6 0 100 7.2 3.6 3.6 0 000-7.2zm8 3.6l-1.7-.56a6.56 6.56 0 00-.52-1.26l.85-1.57-1.88-1.88-1.57.85c-.4-.22-.82-.39-1.26-.52L12 4l-1.92.23c-.44.13-.86.3-1.26.52l-1.57-.85-1.88 1.88.85 1.57c-.22.4-.39.82-.52 1.26L4 12l.23 1.92c.13.44.3.86.52 1.26l-.85 1.57 1.88 1.88 1.57-.85c.4.22.82.39 1.26.52L12 20l1.92-.23c.44-.13.86-.3 1.26-.52l1.57.85 1.88-1.88-.85-1.57c.22-.4.39-.82.52-1.26L20 12z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <span>Settings</span>
+            </button>
+
+            <button class="nav-link" data-screen="support" type="button">
+              <span class="nav-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 17h.01M9.09 9a3 3 0 115.82 1c0 2-3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M4 4h16v16H4z" fill="none" stroke="currentColor" stroke-width="2" />
+                </svg>
+              </span>
+              <span>Support</span>
+            </button>
+          </nav>
+        </div>
+
+        <div class="sidebar-bottom">
+            <button class="nav-link" id="themeToggle" type="button">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span>Dark Mode</span>
+          </button>
+
+          <button class="nav-link" type="button">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-row">
+            <h1 id="pageTitle">Catalog</h1>
+
+            <div class="topbar-actions">
+              <div class="tabs" role="tablist" aria-label="Views">
+                <button class="tab is-active" data-screen="catalog" type="button" aria-selected="true">Inventory</button>
+                <button class="tab" data-screen="insights" type="button" aria-selected="false">AI Insights</button>
+              </div>
+
+              <label class="search-box" for="searchInput">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
+                  <path d="M16 16l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+                <input id="searchInput" type="search" placeholder="Search products..." autocomplete="off" />
+              </label>
+
+              <button class="bell-button" type="button" aria-label="Notifications">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 18H5l1.5-2v-5a5.5 5.5 0 1111 0v5L19 18h-4zm-4 0a2 2 0 004 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+
+              <button class="create-button" id="openCreateButton" type="button">
+                <span class="create-plus">+</span>
+                <span>Create Listing</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="workspace-grid">
+          <section class="content-column">
+            <section class="screen screen-catalog is-active" data-screen-panel="catalog">
+              <section class="filters-layout">
+                <div class="filters-card">
+                  <div class="filter-row">
+                    <label class="pill-select">
+                      <span class="pill-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 5h16l-6 7v5l-4 2v-7L4 5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                      <select id="statusFilter" aria-label="Status">
+                        <option value="all">All Statuses</option>
+                        <option value="ready">Ready</option>
+                        <option value="review">Needs Review</option>
+                        <option value="draft">Draft</option>
+                      </select>
+                    </label>
+
+                    <label class="pill-select">
+                      <span class="pill-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" fill="none" stroke="currentColor" stroke-width="1.8" />
+                        </svg>
+                      </span>
+                      <select id="categoryFilter" aria-label="Category">
+                        <option value="all">All Categories</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="fashion">Fashion</option>
+                        <option value="home">Home</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="filter-actions">
+                    <button class="clear-link" id="clearFilters" type="button">Clear Filters</button>
+                    <button class="export-button" id="exportButton" type="button">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 4v10M8 8l4-4 4 4M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                      <span>Export</span>
+                    </button>
+                  </div>
+                </div>
+
+                <section class="health-card" aria-label="AI catalog health">
+                  <p>AI Catalog Health</p>
+                  <strong id="healthScore">84%</strong>
+                  <div class="sparkles" aria-hidden="true">✦✦</div>
+                  <div class="health-track"><span id="healthBarFill"></span></div>
+                </section>
+              </section>
+
+              <section class="table-card">
+                <div class="table-header table-grid">
+                  <label class="check-wrap">
+                    <input id="selectAll" type="checkbox" aria-label="Select all products" />
+                    <span></span>
+                  </label>
+                  <span>Product</span>
+                  <span>Category</span>
+                  <span>Price</span>
+                  <span>Status</span>
+                  <span>AI Readiness</span>
+                </div>
+
+                <div id="productRows" class="table-body"></div>
+
+                <div class="table-footer">
+                  <p id="resultsSummary">Showing 1-4 of 128 products</p>
+                  <div class="pagination" id="pagination"></div>
+                </div>
+              </section>
+
+              <section class="insight-banner">
+                <div class="insight-star">✦</div>
+                <div>
+                  <h2>AI Insight</h2>
+                  <p id="insightText">
+                    Your overall readiness has improved by 4% since last week. AI recommends
+                    updating the "Needs Review" category to increase discovery.
+                  </p>
+                </div>
+              </section>
+            </section>
+
+            <section class="screen screen-create" data-screen-panel="create">
+              <div class="hero-card create-hero">
+                <div>
+                  <p class="eyebrow">New Listing Flow</p>
+                  <h2>Create a listing draft in minutes</h2>
+                  <p class="support-copy">Start with a product type, choose a channel, and let ShopShot prepare the first draft with AI-ready content.</p>
+                </div>
+                <div class="progress-mini">
+                  <span class="progress-mini-label">Draft completion</span>
+                  <strong id="createProgressValue">72%</strong>
+                </div>
+              </div>
+
+              <div class="two-up-grid">
+                <section class="panel-card">
+                  <div class="panel-card-head">
+                    <h3>Listing Builder</h3>
+                    <span class="tag">Step by step</span>
+                  </div>
+                  <form id="listingForm" class="form-grid">
+                    <label class="field">
+                      <span>Product name</span>
+                      <input id="listingName" type="text" value="Minimalist Ceramic Watch" />
+                    </label>
+                    <label class="field">
+                      <span>Category</span>
+                      <select id="listingCategory">
+                        <option>Fashion</option>
+                        <option>Electronics</option>
+                        <option>Home</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Channel</span>
+                      <select id="listingChannel">
+                        <option>Shopee SG</option>
+                        <option>Shopee MY</option>
+                        <option>Lazada</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Price</span>
+                      <input id="listingPrice" type="text" value="$145.00" />
+                    </label>
+                    <label class="field field-wide">
+                      <span>Highlights</span>
+                      <textarea id="listingHighlights" rows="4">Ceramic finish, minimalist dial, light everyday wear, gift-ready packaging.</textarea>
+                    </label>
+                    <div class="button-row">
+                      <button class="secondary-action-button" id="generateDraftButton" type="submit">Generate Draft</button>
+                      <button class="ghost-action-button" id="saveDraftButton" type="button">Save for Later</button>
+                    </div>
+                  </form>
+                </section>
+
+                <section class="panel-card">
+                  <div class="panel-card-head">
+                    <h3>Live Preview</h3>
+                    <span class="tag tag-soft">Editable</span>
+                  </div>
+                  <div class="draft-preview">
+                    <p class="preview-label">Suggested title</p>
+                    <h3 id="previewTitle">Minimalist Ceramic Watch for Everyday Wear</h3>
+                    <p class="preview-label">Description</p>
+                    <p id="previewDescription">A lightweight ceramic watch designed for clean styling, giftable presentation, and comfortable daily use.</p>
+                    <div class="preview-metrics">
+                      <div>
+                        <span>SEO score</span>
+                        <strong id="previewSeo">88</strong>
+                      </div>
+                      <div>
+                        <span>Readiness</span>
+                        <strong id="previewReadiness">92%</strong>
+                      </div>
+                      <div>
+                        <span>Missing fields</span>
+                        <strong id="previewMissing">2</strong>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section class="screen screen-insights" data-screen-panel="insights">
+              <div class="insight-grid">
+                <section class="metric-card feature">
+                  <p class="eyebrow">Weekly Lift</p>
+                  <strong>+4%</strong>
+                  <span>Catalog readiness is trending up week over week.</span>
+                </section>
+                <section class="metric-card">
+                  <p class="eyebrow">High Priority</p>
+                  <strong id="insightPriorityCount">3</strong>
+                  <span>Products still blocking a full-ready catalog.</span>
+                </section>
+                <section class="metric-card">
+                  <p class="eyebrow">Best Category</p>
+                  <strong>Fashion</strong>
+                  <span>Highest average content score this week.</span>
+                </section>
+              </div>
+
+              <section class="panel-card">
+                <div class="panel-card-head">
+                  <h3>AI Recommendations</h3>
+                  <span class="tag">Actionable</span>
+                </div>
+                <div id="insightRecommendations" class="stack-list"></div>
+              </section>
+            </section>
+
+            <section class="screen screen-settings" data-screen-panel="settings">
+              <div class="settings-grid">
+                <section class="panel-card">
+                  <div class="panel-card-head">
+                    <h3>Workspace Settings</h3>
+                    <span class="tag">Live</span>
+                  </div>
+                  <div class="toggle-list" id="settingsToggles">
+                    <button class="toggle-item is-on" data-setting="autoDescriptions" type="button">
+                      <div>
+                        <strong>Auto-generate descriptions</strong>
+                        <span>Use AI to create first-pass product copy.</span>
+                      </div>
+                      <span class="toggle-knob"></span>
+                    </button>
+                    <button class="toggle-item is-on" data-setting="readinessAlerts" type="button">
+                      <div>
+                        <strong>Readiness alerts</strong>
+                        <span>Surface products that need review first.</span>
+                      </div>
+                      <span class="toggle-knob"></span>
+                    </button>
+                    <button class="toggle-item" data-setting="autoExport" type="button">
+                      <div>
+                        <strong>Auto-export drafts</strong>
+                        <span>Queue marketplace export once listings are approved.</span>
+                      </div>
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="panel-card">
+                  <div class="panel-card-head">
+                    <h3>Connected Channels</h3>
+                    <span class="tag tag-soft">3 active</span>
+                  </div>
+                  <div class="stack-list compact">
+                    <div class="list-row"><strong>Shopee SG</strong><span>Connected</span></div>
+                    <div class="list-row"><strong>Shopee MY</strong><span>Connected</span></div>
+                    <div class="list-row"><strong>Lazada</strong><span>Needs refresh</span></div>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section class="screen screen-support" data-screen-panel="support">
+              <section class="panel-card">
+                <div class="panel-card-head">
+                  <h3>Support Center</h3>
+                  <span class="tag">Fast help</span>
+                </div>
+                <div class="support-grid">
+                  <button class="support-tile" type="button" data-help="export">
+                    <strong>Export issues</strong>
+                    <span>Fix marketplace sync and publishing blockers.</span>
+                  </button>
+                  <button class="support-tile" type="button" data-help="content">
+                    <strong>Content quality</strong>
+                    <span>Improve titles, descriptions, and missing fields.</span>
+                  </button>
+                  <button class="support-tile" type="button" data-help="catalog">
+                    <strong>Catalog cleanup</strong>
+                    <span>Audit categories, duplicates, and readiness gaps.</span>
+                  </button>
+                </div>
+                <div class="support-response" id="supportResponse">
+                  Choose a topic and ShopShot will suggest the next troubleshooting step.
+                </div>
+              </section>
+            </section>
+          </section>
+
+          <aside class="copilot-column">
+            <div class="copilot-head">
+              <div class="brand-badge small">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 2.75l1.91 5.34 5.34 1.91-5.34 1.91L12 17.25l-1.91-5.34-5.34-1.91 5.34-1.91L12 2.75z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2>AI Copilot</h2>
+                <p id="copilotStatus">Active Analysis</p>
+              </div>
+            </div>
+
+            <section class="assistant-note">
+              <p class="assistant-title" id="assistantContext">RKLES Assistant</p>
+              <p id="assistantMessage">
+                Hi! I've analyzed your catalog. You have 3 items that need review to
+                reach 100% readiness. Would you like me to start with the
+                "Minimalist Ceramic Watch"?
+              </p>
+            </section>
+
+            <div class="action-stack" id="quickActions">
+              <button class="action-chip" type="button" data-action="review">
+                <span id="actionReviewLabel">Fix all high-priority items</span>
+              </button>
+              <button class="action-chip" type="button" data-action="optimize">
+                <span id="actionOptimizeLabel">Optimize descriptions</span>
+              </button>
+              <button class="action-chip" type="button" data-action="categories">
+                <span id="actionCategoriesLabel">Check categories</span>
+              </button>
+            </div>
+
+            <form class="chat-input" id="assistantForm">
+              <input id="assistantPrompt" type="text" placeholder="Ask AI anything..." autocomplete="off" />
+              <button type="submit" aria-label="Send message">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 20l16-8L4 4l3 8-3 8zm3-8h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+            </form>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
