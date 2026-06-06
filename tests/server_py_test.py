@@ -57,6 +57,21 @@ class PythonBackendTest(unittest.TestCase):
         self.assertIn("Do not redesign", body["prompt"])
         self.assertIn("Shopee", body["prompt"])
 
+    def test_multipart_body_uses_image_array_fields_for_multiple_references(self):
+        body = server.build_multipart_body(
+            "boundary",
+            {"model": "gpt-image-1.5", "prompt": "Polish previews"},
+            [
+                {"name": "front", "mimeType": "image/png", "data": b"front"},
+                {"name": "side", "mimeType": "image/png", "data": b"side"},
+            ],
+        )
+
+        text = body.decode("latin1")
+        self.assertEqual(text.count('name="image[]"'), 2)
+        self.assertIn('filename="front.png"', text)
+        self.assertIn('filename="side.png"', text)
+
     def test_select_generation_item_returns_single_plan_for_progressive_generation(self):
         item = server.select_generation_item(
             {

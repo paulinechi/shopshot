@@ -34,7 +34,7 @@ const fields = ["productName", "category", "brandTone", "audience", "targetGeo",
 const PIPELINE_STEPS = [
   "Seller photo and metadata captured",
   "Product isolated into clean preview",
-  "Scene variants generated",
+  "Shopee preview variants polished",
   "Metadata JSON generated",
   "PNG, WebP, and metadata ZIP ready"
 ];
@@ -90,7 +90,7 @@ async function handleImageUpload(event) {
 async function generateScenes() {
   els.generateButton.disabled = true;
   els.exportButton.disabled = true;
-  els.generateButton.textContent = "Generating...";
+  els.generateButton.textContent = "Polishing...";
   renderPipelineStatus(state.productImages.length ? 2 : 1);
 
   const input = getInput();
@@ -99,7 +99,7 @@ async function generateScenes() {
   state.metadata = localPayload.metadata;
   state.scenes = [];
   renderScenes();
-  setProgress(0, localPayload.plans.length, `Generating 0 of ${localPayload.plans.length} variants`);
+  setProgress(0, localPayload.plans.length, `Polished 0 of ${localPayload.plans.length} previews`);
 
   for (let index = 0; index < localPayload.plans.length; index += 1) {
     const plan = localPayload.plans[index];
@@ -132,15 +132,15 @@ async function generateScenes() {
     }, input);
     state.scenes.push(scene);
     renderScenes();
-    setProgress(index + 1, localPayload.plans.length, `Generated ${index + 1} of ${localPayload.plans.length} variants`);
+    setProgress(index + 1, localPayload.plans.length, `Polished ${index + 1} of ${localPayload.plans.length} previews`);
   }
 
   renderMetadata();
   renderPipelineStatus(5);
-  els.resultSummary.textContent = `${state.scenes.length} scenes ready`;
+  els.resultSummary.textContent = `${state.scenes.length} Shopee previews ready`;
   els.exportButton.disabled = false;
   els.generateButton.disabled = false;
-  els.generateButton.textContent = "Generate scenes";
+  els.generateButton.textContent = "Polish previews";
 }
 
 async function buildSceneOutputs(payload, input) {

@@ -1,4 +1,4 @@
-# Geo Product Scenario Generator
+# Shopee Product Preview Polisher
 
 End-to-end hackathon slice for steps 1-5 of the contextual e-commerce product scenario pipeline.
 
@@ -18,7 +18,7 @@ The Python backend reads `OPENAI_API_KEY` from `.env` and calls the OpenAI Image
 OPENAI_IMAGE_MODEL=gpt-image-1.5
 ```
 
-`gpt-image-1.5` is the latest OpenAI image generation model in the current official docs. If uploaded product references are present, the backend uses image edits so the object stays based on the original photo instead of being invented from text. If a live API call fails or the key is missing, the app falls back to local canvas-generated scenes so the workflow remains demoable. Background removal uses the OpenAI image edits endpoint with transparent-background output; a local `rembg` integration is the next no-cost/offline fallback candidate.
+`gpt-image-1.5` is the latest OpenAI image model in the current official docs. If uploaded product references are present, the backend uses image edits so the object stays based on the original photo instead of being invented from text. If a live API call fails or the key is missing, the app falls back to local canvas-composited previews so the workflow remains demoable. Background removal uses the OpenAI image edits endpoint with transparent-background output; a local `rembg` integration is the next no-cost/offline fallback candidate.
 
 ## Run
 

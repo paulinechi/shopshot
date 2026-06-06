@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Geo Product Scenario Generator</title>
+    <title>Shopee Product Preview Polisher</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
@@ -13,7 +13,7 @@
           <div class="brand-row">
             <div>
               <p class="eyebrow">Steps 1-5</p>
-              <h1>Product Scenario Generator</h1>
+              <h1>Shopee Product Preview Polisher</h1>
             </div>
             <span id="apiStatus" class="status-pill">Checking API</span>
           </div>
@@ -61,16 +61,16 @@
           <div class="mode-row">
             <label class="radio-card">
               <input type="radio" name="mode" value="openai" checked>
-              <span>OpenAI + fallback</span>
+              <span>OpenAI polish + fallback</span>
             </label>
             <label class="radio-card">
               <input type="radio" name="mode" value="local">
-              <span>Local demo only</span>
+              <span>Local polish demo</span>
             </label>
           </div>
 
           <div class="action-row">
-            <button id="generateButton" class="primary-button">Generate scenes</button>
+            <button id="generateButton" class="primary-button">Polish previews</button>
             <button id="exportButton" class="secondary-button" disabled>Export ZIP</button>
           </div>
         </div>
@@ -97,7 +97,7 @@
             <div class="progress-shell">
               <div id="progressBar" class="progress-bar"></div>
             </div>
-            <p id="progressLabel" class="progress-label">Waiting to generate</p>
+            <p id="progressLabel" class="progress-label">Waiting to polish</p>
             <ol id="pipelineStatus" class="timeline"></ol>
           </section>
         </div>
@@ -107,9 +107,9 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Steps 3-5</p>
-            <h2>Scene variations and export bundle</h2>
+            <h2>Shopee preview variations and export bundle</h2>
           </div>
-          <span id="resultSummary" class="muted">No scenes generated yet</span>
+          <span id="resultSummary" class="muted">No previews polished yet</span>
         </div>
         <div id="sceneGrid" class="scene-grid"></div>
       </section>

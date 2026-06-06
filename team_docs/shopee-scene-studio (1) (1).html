@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scene Studio — AI Product Imagery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F5F2EE;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE8;
+    --border: #E0DBD4;
+    --border2: #CBC4BB;
+    --text: #1A1714;
+    --text2: #6B6560;
+    --text3: #9E9890;
+    --accent: #C85A2C;
+    --accent-soft: #F5E8E1;
+    --accent2: #2C6EC8;
+    --green: #2C7A4B;
+    --green-soft: #E2F0E8;
+    --amber: #9A6A00;
+    --amber-soft: #FFF4DC;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Instrument Serif', serif;
+    font-size: 18px;
+    color: var(--text);
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .shopee-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .shopee-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+
+  /* ── MAIN LAYOUT ── */
+  .app-body {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* ── STEP INDICATOR ── */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 24px;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .step-num.active { background: var(--accent); color: #fff; }
+  .step-num.done { background: var(--green); color: #fff; }
+  .step-num.idle { background: var(--surface2); color: var(--text3); }
+  .step-label { font-size: 12px; color: var(--text2); font-weight: 400; }
+  .step-label.active { color: var(--text); font-weight: 500; }
+  .step-connector {
+    width: 32px; height: 1px;
+    background: var(--border);
+    flex-shrink: 0;
+    margin: 0 8px;
+  }
+  .step-connector.done { background: var(--green); }
+
+  /* ── PANELS ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .panel-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .panel-body { padding: 24px; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer;
+    width: 100%; height: 100%;
+  }
+  .upload-icon {
+    width: 48px; height: 48px;
+    margin: 0 auto 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .upload-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--text3); }
+
+  /* ── PRODUCT PREVIEW ── */
+  .product-preview {
+    display: none;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .product-preview.visible { display: flex; }
+  .preview-img {
+    width: 160px; height: 160px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    object-fit: contain;
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+  .preview-fields { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field-group { display: flex; flex-direction: column; gap: 5px; }
+  .field-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .field-input, .field-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-input:focus, .field-select:focus { border-color: var(--accent); }
+  .field-select { cursor: pointer; }
+
+  /* ── GEO + SCENE SELECTORS ── */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface);
+    color: var(--text2);
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip-section { margin-bottom: 16px; }
+  .chip-section-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  /* ── GENERATE BUTTON ── */
+  .generate-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .generate-btn:hover { background: #b04e24; }
+  .generate-btn:disabled { background: var(--border2); cursor: not-allowed; }
+  .generate-btn .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .generate-btn.loading .spinner { display: block; }
+  .generate-btn.loading .btn-text { opacity: 0.7; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap {
+    display: none;
+    margin-top: 16px;
+  }
+  .progress-wrap.visible { display: block; }
+  .progress-label { font-size: 12px; color: var(--text3); margin-bottom: 6px; font-family: 'DM Mono', monospace; }
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+
+  /* ── RESULTS GRID ── */
+  #results-panel { display: none; }
+  #results-panel.visible { display: block; }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .result-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .result-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .result-card.selected { border-color: var(--accent); border-width: 2px; }
+  .result-img {
+    width: 100%; aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+  }
+  .result-img img { width: 100%; height: 100%; object-fit: cover; }
+  .result-info { padding: 10px 12px; }
+  .result-scene { font-size: 11px; font-weight: 500; color: var(--text2); margin-bottom: 2px; }
+  .result-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .result-tag { font-size: 10px; padding: 2px 6px; background: var(--surface2); border-radius: 4px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .select-check {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+  .result-card.selected .select-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* ── METADATA EDITOR ── */
+  #meta-panel { display: none; }
+  #meta-panel.visible { display: block; }
+  .meta-editor {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .meta-col { display: flex; flex-direction: column; gap: 12px; }
+  .meta-field { display: flex; flex-direction: column; gap: 5px; }
+  .meta-field label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .meta-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+  .meta-input:focus { border-color: var(--accent); }
+  .tag-editor { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .tag-item {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+  }
+  .tag-remove { cursor: pointer; color: var(--text3); font-size: 12px; }
+  .tag-remove:hover { color: var(--accent); }
+  .tag-add-input {
+    border: 1px dashed var(--border2);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    width: 100px;
+    background: transparent;
+    outline: none;
+    color: var(--text);
+  }
+  .tag-add-input:focus { border-color: var(--accent); }
+
+  /* ── ACTION BAR ── */
+  #action-bar { display: none; }
+  #action-bar.visible { display: flex; }
+
+  .action-bar {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 50;
+    margin: 0 -24px -32px;
+  }
+  .action-bar-left { font-size: 13px; color: var(--text2); }
+  .action-bar-left strong { color: var(--text); font-weight: 500; }
+  .action-bar-right { display: flex; gap: 8px; }
+  .btn {
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-ghost { background: var(--surface); color: var(--text2); }
+  .btn-ghost:hover { background: var(--surface2); border-color: var(--border2); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: #b04e24; }
+  .btn-shopee { background: #F5521D; color: #fff; border-color: #F5521D; }
+  .btn-shopee:hover { background: #d94519; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    background: var(--text);
+    color: var(--surface);
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ── EMPTY SCENE PLACEHOLDER ── */
+  .scene-placeholder {
+    width: 100%; aspect-ratio: 1;
+    background: linear-gradient(135deg, var(--surface2) 0%, var(--bg) 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    color: var(--text3);
+  }
+
+  /* ── SCENE CATEGORIES ── */
+  .scene-cats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .scene-cat {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text2);
+  }
+  .scene-cat.active { background: var(--surface2); border-color: var(--border2); color: var(--text); font-weight: 500; }
+
+  /* responsive */
+  @media (max-width: 700px) {
+    .app-body { padding: 16px; }
+    .steps { overflow-x: auto; }
+    .meta-editor { grid-template-columns: 1fr; }
+    .field-row { grid-template-columns: 1fr; }
+    .results-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Scene Studio
+  </div>
+  <div class="header-right">
+    <div class="shopee-badge">
+      <div class="shopee-dot"></div>
+      Shopee connected
+    </div>
+    <span>v0.1 · prototype</span>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- STEP INDICATOR -->
+  <div class="steps" id="step-bar">
+    <div class="step">
+      <div class="step-num active" id="sn1">1</div>
+      <div class="step-label active" id="sl1">Upload</div>
+    </div>
+    <div class="step-connector" id="sc1"></div>
+    <div class="step">
+      <div class="step-num idle" id="sn2">2</div>
+      <div class="step-label" id="sl2">Generate</div>
+    </div>
+    <div class="step-connector" id="sc2"></div>
+    <div class="step">
+      <div class="step-num idle" id="sn3">3</div>
+      <div class="step-label" id="sl3">Review &amp; edit</div>
+    </div>
+    <div class="step-connector" id="sc3"></div>
+    <div class="step">
+      <div class="step-num idle" id="sn4">4</div>
+      <div class="step-label" id="sl4">Export</div>
+    </div>
+  </div>
+
+  <!-- STEP 1 + 2: UPLOAD + CONFIG -->
+  <div class="panel" id="upload-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-title-num">01</span>
+        Product photo &amp; settings
+      </div>
+    </div>
+    <div class="panel-body">
+
+      <!-- Upload zone -->
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept="image/*" capture="environment">
+        <div class="upload-icon">📷</div>
+        <div class="upload-title">Take a photo or upload image</div>
+        <div class="upload-sub">JPG, PNG, WEBP · max 20MB</div>
+      </div>
+
+      <!-- Product details (shown after upload) -->
+      <div class="product-preview" id="product-preview" style="margin-top: 20px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+          <img class="preview-img" id="preview-img" src="" alt="Product" style="display:none;width:160px;height:160px;">
+          <button id="change-photo-btn" style="display:none;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;" onclick="resetUpload()">change photo</button>
+        </div>
+        <div class="preview-fields">
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">Product name</div>
+              <input class="field-input" id="f-name" type="text" placeholder="e.g. Ceramic Coffee Mug">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Category</div>
+              <select class="field-select" id="f-category">
+                <option value="">Select category</option>
+                <option>Home &amp; Living</option>
+                <option>Fashion &amp; Apparel</option>
+                <option>Food &amp; Beverage</option>
+                <option>Electronics &amp; Gadgets</option>
+                <option>Beauty &amp; Personal Care</option>
+                <option>Sports &amp; Outdoors</option>
+                <option>Baby &amp; Kids</option>
+                <option>Gifts &amp; Lifestyle</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">Brand tone</div>
+              <select class="field-select" id="f-tone">
+                <option value="">Select tone</option>
+                <option>Minimal &amp; modern</option>
+                <option>Warm &amp; cozy</option>
+                <option>Bold &amp; vibrant</option>
+                <option>Luxury &amp; premium</option>
+                <option>Playful &amp; fun</option>
+                <option>Natural &amp; organic</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Price range (SGD)</div>
+              <input class="field-input" id="f-price" type="number" placeholder="e.g. 24.90">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Geo + scene selectors (shown after upload) -->
+      <div id="config-section" style="display:none; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+
+        <div class="chip-section">
+          <div class="chip-section-label">Target market</div>
+          <div class="chip-group" id="geo-chips">
+            <span class="chip selected" data-v="SG">🏙️ Singapore</span>
+            <span class="chip" data-v="PH">🌴 Philippines</span>
+            <span class="chip" data-v="MY">🏝️ Malaysia</span>
+            <span class="chip" data-v="ID">🌋 Indonesia</span>
+            <span class="chip" data-v="IN">🪔 India</span>
+            <span class="chip" data-v="TH">🛕 Thailand</span>
+          </div>
+        </div>
+
+        <div class="chip-section">
+          <div class="chip-section-label">Scene types (select all that apply)</div>
+          <div class="chip-group" id="scene-chips">
+            <span class="chip selected" data-v="lifestyle">Lifestyle</span>
+            <span class="chip selected" data-v="seasonal">Seasonal</span>
+            <span class="chip selected" data-v="use-case">Use-case</span>
+            <span class="chip" data-v="gift">Gift &amp; packaging</span>
+            <span class="chip" data-v="minimal">Minimal / white</span>
+          </div>
+        </div>
+
+        <div class="chip-section" style="margin-bottom: 0;">
+          <div class="chip-section-label">Output count</div>
+          <div class="chip-group" id="count-chips">
+            <span class="chip" data-v="4">4 images</span>
+            <span class="chip selected" data-v="8">8 images</span>
+            <span class="chip" data-v="12">12 images</span>
+          </div>
+        </div>
+
+        <button class="generate-btn" id="gen-btn" disabled>
+          <div class="spinner"></div>
+          <span class="btn-text">✦ Generate scenes</span>
+        </button>
+
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="progress-label" id="progress-label">Removing background…</div>
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STEP 3: RESULTS -->
+  <div class="panel" id="results-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-title-num">02</span>
+        Generated scenes
+        <span style="font-size:11px; color:var(--text3); font-weight:400;" id="results-count"></span>
+      </div>
+      <div class="scene-cats" id="filter-cats">
+        <span class="scene-cat active" data-f="all">All</span>
+        <span class="scene-cat" data-f="lifestyle">Lifestyle</span>
+        <span class="scene-cat" data-f="seasonal">Seasonal</span>
+        <span class="scene-cat" data-f="use-case">Use-case</span>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="results-grid" id="results-grid"></div>
+    </div>
+  </div>
+
+  <!-- STEP 4: METADATA EDITOR -->
+  <div class="panel" id="meta-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-title-num">03</span>
+        Listing metadata
+        <span style="font-size:11px; color: var(--amber); background: var(--amber-soft); padding: 2px 7px; border-radius: 4px; font-weight:400;">Editable</span>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="meta-editor">
+        <div class="meta-col">
+          <div class="meta-field">
+            <label>Shopee listing title</label>
+            <input class="meta-input" id="m-title" type="text" placeholder="Auto-generated title…">
+          </div>
+          <div class="meta-field">
+            <label>Product description</label>
+            <textarea class="meta-input" id="m-desc" rows="5" placeholder="Auto-generated Shopee description…"></textarea>
+          </div>
+          <div class="meta-field">
+            <label>Short blurb (TikTok / social)</label>
+            <textarea class="meta-input" id="m-social" rows="2" placeholder="Short social caption…"></textarea>
+          </div>
+        </div>
+        <div class="meta-col">
+          <div class="meta-field">
+            <label>SEO keywords</label>
+            <div class="tag-editor" id="seo-tags"></div>
+          </div>
+          <div class="meta-field" style="margin-top: 4px;">
+            <label>Hashtags</label>
+            <div class="tag-editor" id="hashtag-tags"></div>
+          </div>
+          <div class="meta-field" style="margin-top: 4px;">
+            <label>Alt text (first image)</label>
+            <textarea class="meta-input" id="m-alt" rows="2" placeholder="Image alt text for accessibility…"></textarea>
+          </div>
+          <div class="meta-field">
+            <label>Shopee category (auto-matched)</label>
+            <input class="meta-input" id="m-cat" type="text" readonly style="background:var(--surface2); cursor:default;">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTION BAR -->
+  <div class="action-bar" id="action-bar">
+    <div class="action-bar-left">
+      <span id="selected-count">0 scenes selected</span>
+      &nbsp;·&nbsp; ready to export
+    </div>
+    <div class="action-bar-right">
+      <button class="btn btn-ghost" id="btn-select-all">Select all</button>
+      <button class="btn btn-ghost" id="btn-export-zip">⬇ Export ZIP</button>
+      <button class="btn btn-shopee" id="btn-push-shopee">Push to Shopee →</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────
+const SCENES = [
+  { id:1, type:'lifestyle', label:'Home · morning routine', emoji:'☕', tags:['home','morning','cozy'] },
+  { id:2, type:'lifestyle', label:'Outdoor · golden hour', emoji:'🌅', tags:['outdoor','lifestyle','golden'] },
+  { id:3, type:'lifestyle', label:'Work desk · minimalist', emoji:'💻', tags:['work','desk','minimal'] },
+  { id:4, type:'lifestyle', label:'Dining table · warm light', emoji:'🍽️', tags:['dining','warm','lifestyle'] },
+  { id:5, type:'seasonal', label:'Festival · Hari Raya', emoji:'🌙', tags:['festival','raya','seasonal'] },
+  { id:6, type:'seasonal', label:'Monsoon · indoor cozy', emoji:'🌧️', tags:['monsoon','indoor','rain'] },
+  { id:7, type:'use-case', label:'Product detail · clean', emoji:'🔍', tags:['detail','product','clean'] },
+  { id:8, type:'use-case', label:'In-hand · scale reference', emoji:'✋', tags:['hands-on','scale','use'] },
+];
+
+const META_TEMPLATES = {
+  title: (name, geo) => `${name} | Premium Quality | ${geo === 'SG' ? 'SG Seller Fast Ship' : 'SEA Ready'}`,
+  desc: (name, cat, tone) => `✨ ${name}\n\nPerfect for everyday use and as a gift. Made with care and designed with a ${tone || 'modern'} aesthetic in mind.\n\n📦 What you get:\n• 1× ${name}\n• Free protective packaging\n• Shopee-verified seller\n\n🚚 Fast dispatch | 🌟 ${cat || 'Quality'} category`,
+  social: (name) => `Just dropped: ${name} 🔥 Link in bio or shop directly on Shopee!`,
+  keywords: (name, cat) => [name.toLowerCase(), cat?.toLowerCase() || 'lifestyle', 'singapore', 'quality', 'gift idea', 'shopee sg', 'fast shipping'],
+  hashtags: (name) => [`#${name.replace(/\s/g,'').toLowerCase()}`, '#shopeesg', '#seaproduct', '#lifestyleproduct', '#giftideas'],
+  alt: (name, scene) => `${name} shown in a ${scene} setting — lifestyle product photography`,
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let state = {
+  imageFile: null,
+  imageUrl: null,
+  generating: false,
+  scenesGenerated: false,
+  selectedScenes: new Set(),
+  geos: ['SG'],
+  sceneTypes: ['lifestyle','seasonal','use-case'],
+  count: 8,
+  filter: 'all',
+};
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function showToast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const num = document.getElementById('sn'+i);
+    const lbl = document.getElementById('sl'+i);
+    if (i < n) { num.className='step-num done'; num.textContent='✓'; }
+    else if (i === n) { num.className='step-num active'; num.textContent=i; lbl.className='step-label active'; }
+    else { num.className='step-num idle'; num.textContent=i; lbl.className='step-label'; }
+    if (i < 4) {
+      const c = document.getElementById('sc'+i);
+      c.className = 'step-connector' + (i < n ? ' done' : '');
+    }
+  }
+}
+
+function getTagsHtml(containerId, tags, removable=true) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  tags.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'tag-item';
+    span.dataset.val = t;
+    span.innerHTML = t + (removable ? ` <span class="tag-remove" onclick="removeTag('${containerId}','${t}')">×</span>` : '');
+    el.appendChild(span);
+  });
+  const inp = document.createElement('input');
+  inp.className = 'tag-add-input';
+  inp.placeholder = '+ add';
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && inp.value.trim()) {
+      const newTag = inp.value.trim();
+      const span = document.createElement('span');
+      span.className = 'tag-item';
+      span.dataset.val = newTag;
+      span.innerHTML = newTag + ` <span class="tag-remove" onclick="removeTag('${containerId}','${newTag}')">×</span>`;
+      el.insertBefore(span, inp);
+      inp.value = '';
+    }
+  });
+  el.appendChild(inp);
+}
+
+function removeTag(containerId, val) {
+  const el = document.getElementById(containerId);
+  const items = el.querySelectorAll('.tag-item');
+  items.forEach(i => { if (i.dataset.val === val) i.remove(); });
+}
+
+// ── CHIPS ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('#geo-chips .chip').forEach(c => {
+  c.addEventListener('click', () => {
+    c.classList.toggle('selected');
+    state.geos = [...document.querySelectorAll('#geo-chips .chip.selected')].map(x=>x.dataset.v);
+    checkGenReady();
+  });
+});
+document.querySelectorAll('#scene-chips .chip').forEach(c => {
+  c.addEventListener('click', () => {
+    c.classList.toggle('selected');
+    state.sceneTypes = [...document.querySelectorAll('#scene-chips .chip.selected')].map(x=>x.dataset.v);
+    checkGenReady();
+  });
+});
+document.querySelectorAll('#count-chips .chip').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('#count-chips .chip').forEach(x=>x.classList.remove('selected'));
+    c.classList.add('selected');
+    state.count = parseInt(c.dataset.v);
+  });
+});
+
+// ── FILE UPLOAD ────────────────────────────────────────────────────────────
+function resetUpload() {
+  document.getElementById('upload-zone').style.display = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('change-photo-btn').style.display = 'none';
+  document.getElementById('product-preview').classList.remove('visible');
+  document.getElementById('config-section').style.display = 'none';
+  state.imageFile = null;
+  state.imageUrl = null;
+  checkGenReady();
+}
+
+function loadImageFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  state.imageFile = file;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const dataUrl = ev.target.result;
+    state.imageUrl = dataUrl;
+    const img = document.getElementById('preview-img');
+    img.src = dataUrl;
+    img.style.display = 'block';
+    document.getElementById('change-photo-btn').style.display = 'block';
+    document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('product-preview').classList.add('visible');
+    document.getElementById('config-section').style.display = 'block';
+    setStep(2);
+    checkGenReady();
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('file-input').addEventListener('change', function(e) {
+  loadImageFile(e.target.files[0]);
+});
+
+// drag
+const uz = document.getElementById('upload-zone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('dragover'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('dragover'));
+uz.addEventListener('drop', e => {
+  e.preventDefault(); uz.classList.remove('dragover');
+  loadImageFile(e.dataTransfer.files[0]);
+});
+
+function checkGenReady() {
+  const btn = document.getElementById('gen-btn');
+  const hasImg = !!state.imageFile;
+  const hasGeo = state.geos.length > 0;
+  const hasScenes = state.sceneTypes.length > 0;
+  btn.disabled = !(hasImg && hasGeo && hasScenes);
+}
+
+// ── GENERATE ───────────────────────────────────────────────────────────────
+document.getElementById('gen-btn').addEventListener('click', async () => {
+  if (state.generating) return;
+  state.generating = true;
+
+  const btn = document.getElementById('gen-btn');
+  const prog = document.getElementById('progress-wrap');
+  const fill = document.getElementById('progress-fill');
+  const plabel = document.getElementById('progress-label');
+
+  btn.classList.add('loading');
+  btn.querySelector('.btn-text').textContent = 'Generating…';
+  prog.classList.add('visible');
+
+  const steps = [
+    [15, 'Removing background…'],
+    [35, 'Composing scene layouts…'],
+    [55, 'Generating lifestyle scenes…'],
+    [72, 'Applying geo aesthetics…'],
+    [88, 'Generating metadata…'],
+    [100, 'Finalising outputs…'],
+  ];
+
+  for (const [pct, label] of steps) {
+    await new Promise(r => setTimeout(r, 420 + Math.random()*300));
+    fill.style.width = pct + '%';
+    plabel.textContent = label;
+  }
+
+  await new Promise(r => setTimeout(r, 300));
+
+  state.generating = false;
+  state.scenesGenerated = true;
+  btn.classList.remove('loading');
+  btn.querySelector('.btn-text').textContent = '✦ Regenerate';
+  btn.disabled = false;
+
+  renderResults();
+  renderMeta();
+  setStep(3);
+  document.getElementById('results-panel').classList.add('visible');
+  document.getElementById('meta-panel').classList.add('visible');
+  document.getElementById('action-bar').classList.add('visible');
+  document.getElementById('results-panel').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+// ── RENDER RESULTS ─────────────────────────────────────────────────────────
+function renderResults() {
+  const grid = document.getElementById('results-grid');
+  grid.innerHTML = '';
+  const toShow = SCENES.slice(0, state.count);
+  const filtered = state.filter === 'all' ? toShow : toShow.filter(s => s.type === state.filter);
+
+  document.getElementById('results-count').textContent = `· ${toShow.length} scenes`;
+
+  filtered.forEach(scene => {
+    const card = document.createElement('div');
+    card.className = 'result-card' + (state.selectedScenes.has(scene.id) ? ' selected' : '');
+    card.dataset.id = scene.id;
+
+    card.innerHTML = `
+      <div class="scene-placeholder">${scene.emoji}</div>
+      <div class="result-info">
+        <div class="result-scene">${scene.label}</div>
+        <div style="font-size:10px; color:var(--text3); font-family:'DM Mono',monospace;">${scene.type}</div>
+        <div class="result-tags">${scene.tags.map(t=>`<span class="result-tag">${t}</span>`).join('')}</div>
+      </div>
+      <div class="select-check">${state.selectedScenes.has(scene.id) ? '✓' : ''}</div>
+    `;
+    card.addEventListener('click', () => toggleScene(scene.id, card));
+    grid.appendChild(card);
+  });
+
+  // auto-select first 4
+  if (state.selectedScenes.size === 0) {
+    toShow.slice(0, 4).forEach(s => {
+      state.selectedScenes.add(s.id);
+    });
+    renderResults();
+    updateSelectedCount();
+    return;
+  }
+  updateSelectedCount();
+}
+
+function toggleScene(id, card) {
+  if (state.selectedScenes.has(id)) {
+    state.selectedScenes.delete(id);
+    card.classList.remove('selected');
+    card.querySelector('.select-check').textContent = '';
+  } else {
+    state.selectedScenes.add(id);
+    card.classList.add('selected');
+    card.querySelector('.select-check').textContent = '✓';
+  }
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  document.getElementById('selected-count').innerHTML = `<strong>${state.selectedScenes.size} scenes selected</strong>`;
+}
+
+// ── FILTER ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('#filter-cats .scene-cat').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('#filter-cats .scene-cat').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    state.filter = c.dataset.f;
+    if (state.scenesGenerated) renderResults();
+  });
+});
+
+// ── RENDER META ─────────────────────────────────────────────────────────────
+function renderMeta() {
+  const name = document.getElementById('f-name').value || 'Your Product';
+  const cat = document.getElementById('f-category').value;
+  const tone = document.getElementById('f-tone').value;
+  const geo = state.geos[0] || 'SG';
+
+  document.getElementById('m-title').value = META_TEMPLATES.title(name, geo);
+  document.getElementById('m-desc').value = META_TEMPLATES.desc(name, cat, tone);
+  document.getElementById('m-social').value = META_TEMPLATES.social(name);
+  document.getElementById('m-alt').value = META_TEMPLATES.alt(name, 'lifestyle home');
+  document.getElementById('m-cat').value = cat ? `${cat} > ${name.split(' ')[0]}` : 'Home & Living > Accessories';
+
+  getTagsHtml('seo-tags', META_TEMPLATES.keywords(name, cat));
+  getTagsHtml('hashtag-tags', META_TEMPLATES.hashtags(name));
+}
+
+// ── SELECT ALL ─────────────────────────────────────────────────────────────
+document.getElementById('btn-select-all').addEventListener('click', () => {
+  const toShow = SCENES.slice(0, state.count);
+  if (state.selectedScenes.size === toShow.length) {
+    state.selectedScenes.clear();
+  } else {
+    toShow.forEach(s => state.selectedScenes.add(s.id));
+  }
+  renderResults();
+});
+
+// ── EXPORT ZIP ────────────────────────────────────────────────────────────
+document.getElementById('btn-export-zip').addEventListener('click', () => {
+  if (state.selectedScenes.size === 0) { showToast('Select at least one scene first'); return; }
+  setStep(4);
+
+  const name = document.getElementById('f-name').value || 'product';
+  const slug = name.toLowerCase().replace(/\s+/g,'-');
+
+  const metadata = {
+    product: name,
+    generated_at: new Date().toISOString(),
+    geos: state.geos,
+    title: document.getElementById('m-title').value,
+    description: document.getElementById('m-desc').value,
+    social_caption: document.getElementById('m-social').value,
+    alt_text: document.getElementById('m-alt').value,
+    seo_keywords: [...document.querySelectorAll('#seo-tags .tag-item')].map(t=>t.dataset.val),
+    hashtags: [...document.querySelectorAll('#hashtag-tags .tag-item')].map(t=>t.dataset.val),
+    shopee_category: document.getElementById('m-cat').value,
+    scenes: SCENES.filter(s => state.selectedScenes.has(s.id)).map(s => ({
+      id: s.id,
+      filename: `${slug}_${s.type}_${s.id}.png`,
+      type: s.type,
+      label: s.label,
+      tags: s.tags,
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${slug}_metadata.json`;
+  a.click();
+
+  showToast(`✓ Exported metadata.json + ${state.selectedScenes.size} scene references`);
+});
+
+// ── PUSH TO SHOPEE ────────────────────────────────────────────────────────
+document.getElementById('btn-push-shopee').addEventListener('click', () => {
+  if (state.selectedScenes.size === 0) { showToast('Select at least one scene first'); return; }
+  showToast('🛍️ Connecting to Shopee… (OAuth flow — implement in backend)', 3500);
+  setStep(4);
+});
+</script>
+</body>
+</html>

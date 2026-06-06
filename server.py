@@ -354,7 +354,7 @@ def remove_background_openai(image, api_key, model):
 def polish_product_preview_openai(prompt, images, api_key, model):
     fields = create_openai_product_preview_request(prompt, model)
     boundary = f"----codex-boundary-{uuid.uuid4().hex}"
-    body = build_multipart_body(boundary, fields, images[0])
+    body = build_multipart_body(boundary, fields, images)
     req = request.Request(
         OPENAI_IMAGE_EDITS_URL,
         data=body,
@@ -384,7 +384,7 @@ def polish_product_preview_openai(prompt, images, api_key, model):
     return b64
 
 
-def build_multipart_body(boundary, fields, image):
+def build_multipart_body(boundary, fields, images):
     chunks = []
     for key, value in fields.items():
         chunks.append(f"--{boundary}\r\n".encode("utf-8"))
@@ -392,13 +392,17 @@ def build_multipart_body(boundary, fields, image):
         chunks.append(str(value).encode("utf-8"))
         chunks.append(b"\r\n")
 
-    extension = mimetypes.guess_extension(image["mimeType"]) or ".png"
-    filename = f"{image['name']}{extension}"
-    chunks.append(f"--{boundary}\r\n".encode("utf-8"))
-    chunks.append(f'Content-Disposition: form-data; name="image"; filename="{filename}"\r\n'.encode("utf-8"))
-    chunks.append(f"Content-Type: {image['mimeType']}\r\n\r\n".encode("utf-8"))
-    chunks.append(image["data"])
-    chunks.append(b"\r\n")
+    image_list = images if isinstance(images, list) else [images]
+    field_name = "image[]" if len(image_list) > 1 else "image"
+    for image in image_list:
+        extension = mimetypes.guess_extension(image["mimeType"]) or ".png"
+        filename = f"{image['name']}{extension}"
+        chunks.append(f"--{boundary}\r\n".encode("utf-8"))
+        chunks.append(f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'.encode("utf-8"))
+        chunks.append(f"Content-Type: {image['mimeType']}\r\n\r\n".encode("utf-8"))
+        chunks.append(image["data"])
+        chunks.append(b"\r\n")
+
     chunks.append(f"--{boundary}--\r\n".encode("utf-8"))
     return b"".join(chunks)
 
